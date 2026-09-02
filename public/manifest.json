@@ -1,0 +1,57 @@
+{
+  "id": "/",
+  "name": "COMARA - Sistema de Gestão de Pessoal",
+  "short_name": "COMARA",
+  "description": "Sistema oficial de gestão de Banco de Horas SPTF e Pessoal da COMARA com conformidade LGPD e Cloud Firestore.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#16243D",
+  "background_color": "#0F1B33",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/comara-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard Banco de Horas",
+      "short_name": "Dashboard",
+      "description": "Visualizar indicadores de horas e efetivo",
+      "url": "/?tab=dashboard",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Portal do Colaborador",
+      "short_name": "Portal",
+      "description": "Acesso ao extrato individual e contracheques",
+      "url": "/?tab=portal_colaborador",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

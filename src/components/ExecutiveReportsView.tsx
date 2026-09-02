@@ -43,6 +43,7 @@ interface ExecutiveReportsViewProps {
   userRole?: AdminRole;
   theme?: 'dark' | 'light';
   onSaveInsalubrityBatch?: (records: InsalubrityRecord[]) => Promise<void>;
+  onFetchInsalubrityPeriod?: (startDate: string, endDate: string, forceRefresh?: boolean) => Promise<InsalubrityRecord[]>;
   onNavigateToInsalubrity?: () => void;
   onOpenSptfDispensa?: () => void;
 }
@@ -61,6 +62,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
   userRole = 'SUPER_ADMIN',
   theme = 'dark',
   onSaveInsalubrityBatch,
+  onFetchInsalubrityPeriod,
   onNavigateToInsalubrity,
   onOpenSptfDispensa,
 }) => {

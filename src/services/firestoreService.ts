@@ -20,6 +20,7 @@ import { hashPassword, autoSeedDefaultAdminMaster, authService } from './authSer
 import { canteiroService } from './canteiroService';
 import { auditService, RegisterAuditParams, registrarLogAuditoria } from './auditService';
 import { localCache, CACHE_KEYS, CACHE_TTLS } from './localCache';
+import { storageService } from './storageService';
 export { registrarLogAuditoria, autoSeedDefaultAdminMaster };
 
 export const COLLECTIONS = {
@@ -370,6 +371,103 @@ export const firestoreService = {
       logFirestoreError(error, OperationType.LIST, path);
       if (onError) onError(error);
       return () => {};
+    }
+  },
+
+  async getTimeRecordsByMonth(anoMes: string, canteiroId?: string): Promise<TimeRecord[]> {
+    const path = COLLECTIONS.LANCAMENTOS;
+    const [yearStr, monthStr] = (anoMes || '').split('-');
+    const year = parseInt(yearStr, 10) || new Date().getFullYear();
+    const month = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
+
+    try {
+      const q = query(
+        collection(db, path),
+        where('dataRegistro', '>=', startDate),
+        where('dataRegistro', '<=', endDate),
+        limit(1000)
+      );
+
+      const snapshot = await getDocs(q);
+      const list: TimeRecord[] = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (normalizedCanteiro) {
+          const recSede = (data.employeeSede || data.sede || data.secaoCanteiro || '').toUpperCase();
+          const recCanteiro = (data.canteiroId || '').toUpperCase();
+          if (recSede && !recSede.includes(normalizedCanteiro) && recCanteiro !== normalizedCanteiro) {
+            return;
+          }
+        }
+
+        const rawDate = data.dataRegistro || data.data_ocorrencia || data.data || data.date || (data.criadoEm ? data.criadoEm.split('T')[0] : '');
+        const horasBrutas = typeof data.horasBrutas === 'number' ? data.horasBrutas : (Number(data.horasBrutas) || 0);
+        const multiplicador = typeof data.multiplicador === 'number' ? data.multiplicador : (Number(data.multiplicador) || 1);
+        let saldoCalculado = typeof data.saldoCalculado === 'number' ? data.saldoCalculado : (Number(data.saldoCalculado) || 0);
+
+        if (saldoCalculado === 0) {
+          if (data.tipoOcorrencia === 'TRABALHO' && horasBrutas > 0) {
+            saldoCalculado = horasBrutas * multiplicador;
+          } else if (data.tipoOcorrencia === 'COMPENSACAO' || data.tipoOcorrencia === 'DISPENSA_OPERACIONAL') {
+            saldoCalculado = -(horasBrutas > 0 ? horasBrutas : 8.0);
+          } else if (Number(data.horasExtras50) > 0 || Number(data.horasExtras100) > 0) {
+            saldoCalculado = (Number(data.horasExtras50) || 0) + (Number(data.horasExtras100) || 0);
+          } else if (Number(data.folgasCompensatorias) > 0 || Number(data.horasAtrasoFalta) > 0) {
+            saldoCalculado = -((Number(data.folgasCompensatorias) || 0) + (Number(data.horasAtrasoFalta) || 0));
+          }
+        }
+
+        list.push({
+          id: docSnap.id,
+          matricula: (data.matricula || '').toString().trim().toUpperCase(),
+          employeeName: data.employeeName || '',
+          employeeSede: data.employeeSede || 'KO',
+          employeeFuncao: data.employeeFuncao || 'Técnico de Manutenção',
+          employeeAvatarUrl: data.employeeAvatarUrl,
+          dataRegistro: rawDate,
+          data_ocorrencia: data.data_ocorrencia || rawDate,
+          tipoOcorrencia: data.tipoOcorrencia || 'TRABALHO',
+          horasBrutas,
+          multiplicador,
+          saldoCalculado,
+          horasDescontoFolha: typeof data.horasDescontoFolha === 'number' ? data.horasDescontoFolha : (data.tipoOcorrencia === 'FALTA_INJUSTIFICADA' ? 8.0 : 0),
+          saldo_remanescente: typeof data.saldo_remanescente === 'number' ? data.saldo_remanescente : (Number(data.saldo_remanescente) || (saldoCalculado !== 0 ? Math.abs(saldoCalculado) : 0)),
+          status_compensacao: data.status_compensacao || 'ABERTO',
+          liquidacoes: data.liquidacoes || [],
+          eFeriado: Boolean(data.eFeriado),
+          nomeFeriado: data.nomeFeriado,
+          diaSemana: typeof data.diaSemana === 'number' ? data.diaSemana : 1,
+          diaSemanaNome: data.diaSemanaNome || '',
+          observacao: data.observacao,
+          comprovante: data.comprovante,
+          criadoEm: data.criadoEm || '',
+          criadoPorEmail: data.criadoPorEmail,
+          atualizadoEm: data.atualizadoEm,
+          editadoPor: data.editadoPor,
+          editadoEm: data.editadoEm,
+        });
+      });
+
+      list.sort((a, b) => (b.dataRegistro || '').localeCompare(a.dataRegistro || ''));
+      return list;
+    } catch (error: any) {
+      logFirestoreError(error, OperationType.LIST, path);
+      const local = storageService.getTimeRecords();
+      return local.filter(r => {
+        const d = r.dataRegistro || r.data_ocorrencia || '';
+        const matchDate = d >= startDate && d <= endDate;
+        if (!matchDate) return false;
+        if (normalizedCanteiro) {
+          const recSede = (r.employeeSede || '').toUpperCase();
+          return recSede.includes(normalizedCanteiro);
+        }
+        return true;
+      });
     }
   },
 
@@ -1004,7 +1102,7 @@ export const firestoreService = {
       const list: InsalubrityRecord[] = [];
 
       snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
+        const data = docSnap.data() as Record<string, any>;
         const recSede = (data.sede || 'KO').toUpperCase();
         if (normalizedCanteiro && recSede !== normalizedCanteiro) return;
 
@@ -1602,6 +1700,75 @@ export const firestoreService = {
       logFirestoreError(error, OperationType.LIST, path);
       if (onError) onError(error);
       return () => {};
+    }
+  },
+
+  async getDispensasByMonth(anoMes: string, canteiroId?: string): Promise<DispensaSptfRecord[]> {
+    const path = COLLECTIONS.DISPENSAS_SPTF;
+    const [yearStr, monthStr] = (anoMes || '').split('-');
+    const year = parseInt(yearStr, 10) || new Date().getFullYear();
+    const month = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
+
+    try {
+      const q = query(
+        collection(db, path),
+        where('data', '>=', startDate),
+        where('data', '<=', endDate),
+        limit(500)
+      );
+
+      const snapshot = await getDocs(q);
+      const list: DispensaSptfRecord[] = [];
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (normalizedCanteiro) {
+          const secao = (data.secaoCanteiro || '').toUpperCase();
+          const canteiro = (data.canteiroId || '').toUpperCase();
+          if (!secao.includes(normalizedCanteiro) && canteiro !== normalizedCanteiro) {
+            return;
+          }
+        }
+
+        list.push({
+          id: docSnap.id,
+          numeroGuia: data.numeroGuia || '',
+          matricula: (data.matricula || '').toString().trim().toUpperCase(),
+          nome: data.nome || '',
+          saram: data.saram || data.matricula || '',
+          secaoCanteiro: data.secaoCanteiro || 'DECO-KO',
+          data: data.data || '',
+          horarioInicio: data.horarioInicio || '13:00',
+          horarioFim: data.horarioFim || '16:00',
+          totalHoras: typeof data.totalHoras === 'number' ? data.totalHoras : (Number(data.totalHoras) || 0),
+          motivo: data.motivo || 'COMPENSAÇÃO BANCO DE HORAS',
+          observacoes: data.observacoes || '',
+          emitidoPorNome: data.emitidoPorNome || '',
+          emitidoPorEmail: data.emitidoPorEmail || '',
+          emitidoEm: data.emitidoEm || '',
+          lancamentoId: data.lancamentoId || '',
+          status: data.status || 'EMITIDA',
+        });
+      });
+
+      list.sort((a, b) => (b.emitidoEm || b.data || '').localeCompare(a.emitidoEm || a.data || ''));
+      return list;
+    } catch (error: any) {
+      logFirestoreError(error, OperationType.LIST, path);
+      const local = storageService.getDispensasSptf();
+      return local.filter(d => {
+        const dateMatch = d.data && d.data >= startDate && d.data <= endDate;
+        if (!dateMatch) return false;
+        if (normalizedCanteiro) {
+          const secao = (d.secaoCanteiro || '').toUpperCase();
+          return secao.includes(normalizedCanteiro);
+        }
+        return true;
+      });
     }
   },
 

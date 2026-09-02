@@ -348,6 +348,8 @@ export const rbacService = {
         return this.canValidateInsalubrity(r) || r === 'GERENTE_CANTEIRO';
       case 'relatorios':
         return r !== 'AUX_DA';
+      case 'dispensas_faltas':
+        return true;
       case 'dashboard':
       case 'colaboradores':
       case 'extrato':

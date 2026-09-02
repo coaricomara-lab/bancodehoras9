@@ -1,18 +1,13 @@
 import React, { useRef } from 'react';
 import { PaystubRecord } from '../types';
 import { ComaraLogo } from './ComaraLogo';
+import { useInstitution } from '../contexts/InstitutionContext';
 import { 
   Printer, 
-  Download, 
   ShieldCheck, 
-  Calendar, 
-  Building2, 
-  User, 
-  CreditCard, 
-  FileText,
-  DollarSign,
   CheckCircle2,
-  Lock
+  Lock,
+  Building2
 } from 'lucide-react';
 
 interface ContrachequeMirrorViewProps {
@@ -31,6 +26,17 @@ export const ContrachequeMirrorView: React.FC<ContrachequeMirrorViewProps> = ({
   const isDark = theme === 'dark';
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Carregar configurações da instituição (com fallback seguro)
+  let instSettings: any = null;
+  let instSedes: any[] = [];
+  try {
+    const inst = useInstitution();
+    instSettings = inst?.settings;
+    instSedes = inst?.sedes || [];
+  } catch {
+    // Fallback caso renderizado fora do provider
+  }
+
   const formatCurrency = (val: number | undefined) => {
     return (val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -38,6 +44,27 @@ export const ContrachequeMirrorView: React.FC<ContrachequeMirrorViewProps> = ({
   const handlePrint = () => {
     window.print();
   };
+
+  // Resolução do Nome Completo do Canteiro
+  const getCanteiroNome = () => {
+    const raw = (paystub.sede || '').trim().toUpperCase();
+    if (!raw || raw === 'KO' || raw === 'KO-DL' || raw.includes('COARI')) {
+      return 'Canteiro de Obras Coari (KO)';
+    }
+    const found = instSedes.find((s: any) => s.codigo?.toUpperCase() === raw || s.id?.toUpperCase() === raw);
+    if (found) {
+      return `${found.nome} (${found.codigo})`;
+    }
+    if (raw === 'MN' || raw.includes('MANAUS')) return 'Destacamento de Apoio Manaus (MN)';
+    if (raw === 'BE' || raw.includes('BELÉM') || raw.includes('BELEM')) return 'Sede Belém (BE)';
+    if (raw === 'SJ' || raw.includes('SÃO GABRIEL')) return 'Destacamento São Gabriel da Cachoeira (SJ)';
+    if (raw === 'IA' || raw.includes('IAUARETÊ')) return 'Destacamento Iauaretê (IA)';
+    return paystub.sede;
+  };
+
+  const canteiroFormatado = getCanteiroNome();
+  const cnpjFormatado = instSettings?.cnpj || '00.394.429/0090-86';
+  const enderecoFormatado = instSettings?.endereco || 'Av. Pedro Álvares Cabral, 7115 - Sacramenta, Belém - PA, 66610-020';
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -84,29 +111,36 @@ export const ContrachequeMirrorView: React.FC<ContrachequeMirrorViewProps> = ({
           isDark ? 'bg-[#16243D] border-[#243756] text-gray-100' : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
-        {/* 1. Cabeçalho Oficial */}
-        <div className="border-b-2 border-slate-300/60 pb-4 mb-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 text-center sm:text-left">
-              <ComaraLogo size="lg" />
-              <div>
-                <h1 className="text-xs font-black tracking-widest uppercase text-blue-600 print:text-blue-900">
-                  COMANDO DA AERONÁUTICA
-                </h1>
-                <h2 className="text-sm sm:text-base font-extrabold tracking-tight">
-                  COMISSÃO DE AEROPORTOS DA REGIÃO AMAZÔNICA - COMARA
-                </h2>
-                <p className={`text-[11px] font-mono ${isDark ? 'text-gray-400' : 'text-slate-500'} print:text-slate-600`}>
-                  CNPJ: 00.394.429/0143-70 • SEDE / CANTEIRO: <span className="font-bold text-blue-500 print:text-black">{paystub.sede || 'KO-DL'}</span>
-                </p>
-              </div>
+        {/* 1. Cabeçalho Oficial - Centralizado com os 4 itens */}
+        <div className="border-b-2 border-slate-300/60 pb-5 mb-5">
+          <div className="flex flex-col items-center justify-center text-center">
+            {/* Brasão Oficial Centralizado */}
+            <div className="flex items-center justify-center mb-2">
+              <ComaraLogo size="md" />
             </div>
 
-            <div className="text-center sm:text-right bg-blue-500/10 print:bg-slate-100 border border-blue-500/20 print:border-slate-300 px-4 py-2 rounded-xl">
-              <span className="text-[10px] font-bold tracking-wider uppercase text-blue-500 print:text-slate-700 block">
+            {/* Os 4 itens centralizados rigorosamente estruturados */}
+            <div className="space-y-0.5 text-center">
+              <h1 className="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-900 dark:text-white print:text-black">
+                Comando da Aeronáutica
+              </h1>
+              <h2 className="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-900 dark:text-white print:text-black">
+                COMISSÃO DE AEROPORTOS DA REGIÃO AMAZÔNICA
+              </h2>
+              <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 print:text-blue-900">
+                COMARA
+              </h3>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 print:text-slate-700 pt-0.5">
+                CANTEIRO: {canteiroFormatado}
+              </p>
+            </div>
+
+            {/* Demonstrativo de Pagamento Mensal */}
+            <div className="mt-3.5 bg-blue-500/10 dark:bg-blue-950/30 print:bg-slate-100 border border-blue-500/20 print:border-slate-300 px-5 py-2 rounded-xl text-center">
+              <span className="text-[10px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 print:text-slate-700 block">
                 DEMONSTRATIVO DE PAGAMENTO MENSAL
               </span>
-              <span className="text-base sm:text-lg font-black font-mono tracking-tight text-blue-600 print:text-blue-950">
+              <span className="text-base sm:text-lg font-black font-mono tracking-tight text-blue-600 dark:text-blue-300 print:text-blue-950">
                 {paystub.periodo || `${String(paystub.mes).padStart(2, '0')}/${paystub.ano}`}
               </span>
               {paystub.dataInicio && paystub.dataFim && (
@@ -155,7 +189,7 @@ export const ContrachequeMirrorView: React.FC<ContrachequeMirrorViewProps> = ({
               Lotação / Canteiro
             </span>
             <span className="font-medium">
-              {paystub.sede} - Destacamento Coari
+              {canteiroFormatado}
             </span>
           </div>
 
@@ -294,17 +328,50 @@ export const ContrachequeMirrorView: React.FC<ContrachequeMirrorViewProps> = ({
           </div>
         </div>
 
-        {/* 6. Rodapé Legal, Selo Digital e Assinatura */}
-        <div className="pt-3 border-t border-slate-700/40 print:border-slate-300 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-slate-400 print:text-slate-600">
-          <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-blue-500" />
-            <span>Documento emitido eletronicamente em conformidade com a LGPD (Lei nº 13.709/2018).</span>
-          </div>
-          <div className="font-mono">
-            Chave de Autenticação: <span className="font-bold text-slate-300 print:text-black">{paystub.id}</span>
+        {/* 6. No lugar das assinaturas: Dados Institucionais Completos + CNPJ + Endereço */}
+        <div className={`mt-5 pt-4 border-t-2 border-slate-300/60 rounded-xl p-4 border text-xs ${
+          isDark ? 'bg-slate-900/50 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+        } print:bg-white print:border-slate-300 print:text-black`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            {/* Bloco Institucional Repetido com CNPJ e Endereço */}
+            <div className="space-y-1">
+              <p className="text-xs font-bold uppercase text-slate-900 dark:text-white print:text-black">
+                Comando da Aeronáutica
+              </p>
+              <p className="text-xs font-bold uppercase text-slate-900 dark:text-white print:text-black">
+                COMISSÃO DE AEROPORTOS DA REGIÃO AMAZÔNICA
+              </p>
+              <p className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 print:text-blue-900">
+                COMARA
+              </p>
+              <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 print:text-slate-700">
+                CANTEIRO: {canteiroFormatado}
+              </p>
+              <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 print:text-slate-700">
+                CNPJ: {cnpjFormatado}
+              </p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 print:text-slate-700">
+                {enderecoFormatado}
+              </p>
+            </div>
+
+            {/* Bloco de Autenticidade e Emissão Eletrônica */}
+            <div className="flex flex-col sm:items-end justify-between h-full space-y-2 text-left sm:text-right">
+              <div className="flex items-center gap-1.5 sm:justify-end text-[11px] text-slate-500 dark:text-slate-400 print:text-slate-600">
+                <Lock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Documento emitido eletronicamente em conformidade com a LGPD (Lei nº 13.709/2018).</span>
+              </div>
+              <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 print:text-slate-600">
+                Chave de Autenticação: <span className="font-bold text-slate-900 dark:text-slate-200 print:text-black">{paystub.id}</span>
+              </div>
+              <div className="text-[10px] text-slate-400 print:text-slate-500">
+                Emissão Oficial • Espelho Digital COMARA
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

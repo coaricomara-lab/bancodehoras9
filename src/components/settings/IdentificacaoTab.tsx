@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { InstitutionSettings } from '../../types/institutionConfig';
 import { CardSection, FormInput } from './FormControls';
+import { PWAInstallButton } from '../PWAInstallButton';
 import { 
   Building, 
   Tag, 
@@ -12,7 +13,8 @@ import {
   Trash2, 
   Image as ImageIcon,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Smartphone
 } from 'lucide-react';
 
 interface IdentificacaoTabProps {
@@ -258,6 +260,16 @@ export const IdentificacaoTab: React.FC<IdentificacaoTabProps> = ({
             />
           </div>
         </div>
+      </CardSection>
+
+      {/* 4. SEÇÃO: APLICATIVO INSTALÁVEL (PWA) */}
+      <CardSection
+        title="Instalação do Aplicativo (PWA)"
+        description="Capacidade de instalação do sistema como Progressive Web App em celulares, tablets e computadores com acesso rápido e tela cheia."
+        icon={Smartphone}
+        isDark={isDark}
+      >
+        <PWAInstallButton variant="card" theme={isDark ? 'dark' : 'light'} />
       </CardSection>
     </div>
   );

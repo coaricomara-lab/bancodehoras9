@@ -36,10 +36,12 @@ import { InsalubrityManagement } from './components/InsalubrityManagement';
 import { CanteirosManagement } from './components/CanteirosManagement';
 import { ExecutiveReportsView } from './components/ExecutiveReportsView';
 import { ContrachequesManagement } from './components/ContrachequesManagement';
+import { DispensasFaltasManagement } from './components/DispensasFaltasManagement';
 import { AuditTrailView } from './components/AuditTrailView';
 import { ComaraLogoModal } from './components/ComaraLogoModal';
 import { DatabaseSafetyActionModal, SafetyActionType } from './components/DatabaseSafetyActionModal';
 import { SessionTimeoutModal } from './components/SessionTimeoutModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { rbacService } from './services/rbacService';
 import { registrarLogAuditoria } from './services/auditService';
@@ -578,83 +580,104 @@ export default function App() {
     };
   }, [showToast]);
 
+  // Helper unificado para aplicar sessão de usuário autenticado
+  const applyUserAuth = (user: { uid?: string; email: string; displayName?: string | null; photoURL?: string | null }, processed: any) => {
+    if (processed.status === 'inativo' || processed.status === 'bloqueado' || processed.admin.ativo === false) {
+      authService.clearSession();
+      setCurrentUser(null);
+      setUserRole(null);
+      setPendingAccessUser({
+        email: processed.admin.email,
+        nome: processed.admin.nome || user.displayName || processed.admin.email.split('@')[0],
+        foto: processed.admin.foto || user.photoURL || null,
+        status: 'inativo'
+      });
+      showToast('Usuário desativado. Procure o Gerente ou DA do canteiro para solicitar o desbloqueio.', 'error');
+      return { success: false, error: 'Usuário desativado. Procure o Gerente ou DA do canteiro para solicitar o desbloqueio.' };
+    }
+
+    if (processed.status === 'pendente') {
+      setPendingAccessUser({
+        email: processed.admin.email,
+        nome: processed.admin.nome || user.displayName || processed.admin.email.split('@')[0],
+        foto: processed.admin.foto || user.photoURL || null,
+        status: 'pendente'
+      });
+      setCurrentUser(null);
+      setUserRole(null);
+      setUserMode('ADMIN');
+      showToast('Sua conta foi registrada e aguarda liberação do administrador.', 'info');
+      return { success: true, pending: true };
+    }
+
+    const appUser: AppUser = {
+      uid: user.uid || `user-${processed.admin.email}`,
+      email: processed.admin.email,
+      nome: processed.admin.nome,
+      displayName: user.displayName || processed.admin.nome,
+      role: processed.isSuperAdmin ? 'SUPER_ADMIN' : processed.admin.nivelAcesso,
+      cargo: processed.admin.cargo,
+      sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
+      canteiroCodigo: processed.admin.canteiroCodigo || processed.admin.sede || 'KO',
+      loginTime: new Date().toISOString(),
+      photoURL: user.photoURL || processed.admin.foto,
+    };
+    setPendingAccessUser(null);
+    setCurrentUser(appUser);
+    setUserRole(appUser.role);
+    setUserMode(appUser.role === 'AUDITOR' ? 'COLABORADOR' : 'ADMIN');
+    authService.saveCurrentSession({
+      email: processed.admin.email,
+      nome: processed.admin.nome,
+      role: appUser.role,
+      cargo: processed.admin.cargo,
+      saram: processed.admin.saram,
+      nomeGuerra: processed.admin.nomeGuerra,
+      postoGraduacao: processed.admin.postoGraduacao,
+      funcao: processed.admin.funcao || processed.admin.cargo,
+      canteiroSede: processed.admin.canteiroSede || processed.admin.sede || 'TODAS',
+      sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
+      loginTime: new Date().toISOString(),
+    });
+    setFirestoreErrorNotice(null);
+    showToast(`Bem-vindo(a), ${user.displayName || processed.admin.nome}!`, 'success');
+    return { success: true, pending: false };
+  };
+
   // Auth Handler: Google Workspace Sign-In (Firebase Auth SDK via Popup)
   const handleGoogleSignIn = async () => {
     try {
       setIsVerifyingPermissions(true);
       const { user, processed } = await authService.signInWithGoogle();
-
-      if (processed.status === 'inativo' || processed.status === 'bloqueado' || processed.admin.ativo === false) {
-        authService.clearSession();
-        setCurrentUser(null);
-        setUserRole(null);
-        setPendingAccessUser({
-          email: processed.admin.email,
-          nome: processed.admin.nome || user.displayName || processed.admin.email.split('@')[0],
-          foto: processed.admin.foto || user.photoURL || null,
-          status: 'inativo'
-        });
-        showToast('Usuário desativado. Procure o Gerente ou DA do canteiro para solicitar o desbloqueio.', 'error');
-        return { success: false, error: 'Usuário desativado. Procure o Gerente ou DA do canteiro para solicitar o desbloqueio.' };
-      }
-
-      if (processed.status === 'pendente') {
-        setPendingAccessUser({
-          email: processed.admin.email,
-          nome: processed.admin.nome || user.displayName || processed.admin.email.split('@')[0],
-          foto: processed.admin.foto || user.photoURL || null,
-          status: 'pendente'
-        });
-        setCurrentUser(null);
-        setUserRole(null);
-        setUserMode('ADMIN');
-        showToast('Sua conta foi registrada e aguarda liberação do administrador.', 'info');
-        return { success: true, pending: true };
-      }
-
-      const appUser: AppUser = {
-        uid: user.uid,
-        email: processed.admin.email,
-        nome: processed.admin.nome,
-        displayName: user.displayName || processed.admin.nome,
-        role: processed.isSuperAdmin ? 'SUPER_ADMIN' : processed.admin.nivelAcesso,
-        cargo: processed.admin.cargo,
-        sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
-        canteiroCodigo: processed.admin.canteiroCodigo || processed.admin.sede || 'KO',
-        loginTime: new Date().toISOString(),
-        photoURL: user.photoURL || processed.admin.foto,
-      };
-      setPendingAccessUser(null);
-      setCurrentUser(appUser);
-      setUserRole(appUser.role);
-      setUserMode(appUser.role === 'AUDITOR' ? 'COLABORADOR' : 'ADMIN');
-      authService.saveCurrentSession({
-        email: processed.admin.email,
-        nome: processed.admin.nome,
-        role: appUser.role,
-        cargo: processed.admin.cargo,
-        saram: processed.admin.saram,
-        nomeGuerra: processed.admin.nomeGuerra,
-        postoGraduacao: processed.admin.postoGraduacao,
-        funcao: processed.admin.funcao || processed.admin.cargo,
-        canteiroSede: processed.admin.canteiroSede || processed.admin.sede || 'TODAS',
-        sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
-        loginTime: new Date().toISOString(),
-      });
-      setFirestoreErrorNotice(null);
-      showToast(`Bem-vindo(a), ${user.displayName || processed.admin.nome}!`, 'success');
-      return { success: true, pending: false };
+      return applyUserAuth(user, processed);
     } catch (err: any) {
       const code = err?.code || '';
       let errorMsg = err?.message || 'Falha ao autenticar com Google Workspace.';
       if (code === 'auth/popup-closed-by-user') {
         errorMsg = 'A janela de login do Google foi fechada antes de concluir.';
       } else if (code === 'auth/unauthorized-domain') {
-        errorMsg = 'Domínio não autorizado no Firebase Console > Authentication > Settings.';
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        errorMsg = `Domínio não autorizado no Firebase Auth (${host}). Você pode adicionar o domínio no Firebase Console ou usar o Acesso de Contingência.`;
       } else {
         errorMsg = getFirebaseAuthErrorMessage(code, errorMsg);
       }
       console.error('Erro na autenticação Google Popup:', err);
+      showToast(errorMsg, 'error');
+      return { success: false, error: errorMsg, code };
+    } finally {
+      setIsVerifyingPermissions(false);
+    }
+  };
+
+  // Auth Handler: Acesso de Contingência / Homologação para Contas Master
+  const handleDevAdminSignIn = async (email: string = 'comarafab@gmail.com') => {
+    try {
+      setIsVerifyingPermissions(true);
+      const { user, processed } = await authService.signInWithDevMaster(email);
+      return applyUserAuth(user, processed);
+    } catch (err: any) {
+      console.error('Erro no acesso de desenvolvimento:', err);
+      const errorMsg = err?.message || 'Falha no acesso de contingência.';
       showToast(errorMsg, 'error');
       return { success: false, error: errorMsg };
     } finally {
@@ -1237,6 +1260,11 @@ export default function App() {
 
   const handleFetchInsalubrityPeriod = async (startDate: string, endDate: string, forceRefresh = false): Promise<InsalubrityRecord[]> => {
     try {
+      const isGlobal = rbacService.isGlobalRole(userRole);
+      const activeCanteiro = (!isGlobal && currentUser)
+        ? rbacService.getUserCanteiroId(currentUser)
+        : undefined;
+
       const records = await firestoreService.fetchInsalubrityRecordsByPeriod({
         startDate,
         endDate,
@@ -1625,6 +1653,7 @@ export default function App() {
           isOpen={isAdminLoginModalOpen}
           onClose={() => setIsAdminLoginModalOpen(false)}
           onGoogleSignIn={handleGoogleSignIn}
+          onDevAdminSignIn={handleDevAdminSignIn}
           isDark={isDark}
         />
       </div>
@@ -1941,6 +1970,20 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'dispensas_faltas' && (
+            <DispensasFaltasManagement
+              employees={employees}
+              constructionSites={constructionSites}
+              currentUserEmail={currentUserEmail}
+              userRole={userRole}
+              theme={theme}
+              onViewEmployeeStatement={(mat) => handleViewStatement(mat)}
+              onOpenNewEntry={(mat) => handleOpenNewEntry(mat)}
+              onOpenNewDispensa={(mat) => handleOpenSptfDispensa(mat)}
+              onDeleteDispensa={handleDeleteDispensaSptf}
+            />
+          )}
+
           {activeTab === 'contracheques' && (
             <ProtectedRoute
               allowedRoles={['SUPER_ADMIN', 'RH_ADMIN', 'GESTOR_RH']}
@@ -2151,6 +2194,9 @@ export default function App() {
         onStayLoggedIn={resetIdleTimer}
         onLogoutNow={forceIdleTimeout}
       />
+
+      {/* 9. Indicador de Conexão Offline PWA */}
+      <OfflineIndicator theme={theme} />
     </div>
   );
 }

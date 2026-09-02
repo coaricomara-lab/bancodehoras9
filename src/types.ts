@@ -181,11 +181,13 @@ export interface AuthSession {
 export interface Employee {
   id: string;
   matricula: string;
+  saram?: string;
   nome: string;
   funcao: string;
   sede: Branch; // Sede padrão/fixa
   sede_origem?: Branch; // Sede contratual / fixa
   sede_atual?: Branch; // Canteiro / sede temporária
+  secaoLotacao?: string;
   canteiroId?: string; // ID do canteiro/construção site (FK para ConstructionSite.id)
   dataInicioAlocacao?: string; // Início da missão
   dataFimAlocacao?: string; // Fim da missão

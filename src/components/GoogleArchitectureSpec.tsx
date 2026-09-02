@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Database, 
   Layers, 
@@ -35,6 +35,7 @@ import {
   History,
   Info,
   ChevronRight,
+  ChevronLeft,
   Sparkle
 } from 'lucide-react';
 
@@ -53,12 +54,131 @@ type TabType =
   | 'html_modal' 
   | 'looker_sql';
 
+interface ManualTabConfig {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  badge: string;
+}
+
+const MANUAL_TABS: ManualTabConfig[] = [
+  { id: 'manual_perfis', label: '1. Perfis de Acesso & Fluxos', icon: Users, color: 'text-blue-500', badge: 'border-blue-500 text-blue-400 bg-blue-500/10' },
+  { id: 'insalubridade_sptf', label: '2. Insalubridade & Fórmulas SPTF', icon: TableProperties, color: 'text-amber-500', badge: 'border-amber-500 text-amber-400 bg-amber-500/10' },
+  { id: 'seguranca_backups', label: '3. Segurança & Pontos de Restauração', icon: Shield, color: 'text-rose-500', badge: 'border-rose-500 text-rose-400 bg-rose-500/10' },
+  { id: 'etapa5_golive', label: '4. Go-Live & Looker Studio', icon: Rocket, color: 'text-emerald-500', badge: 'border-emerald-500 text-emerald-400 bg-emerald-500/10' },
+  { id: 'etapa4_auditoria', label: '5. Auditoria & Alertas RH', icon: ShieldAlert, color: 'text-purple-500', badge: 'border-purple-500 text-purple-400 bg-purple-500/10' },
+  { id: 'etapa2_csv_drive', label: '6. CSV UPSERT & Drive', icon: UploadCloud, color: 'text-cyan-500', badge: 'border-cyan-500 text-cyan-400 bg-cyan-500/10' },
+  { id: 'code_gs', label: '7. Code.gs Script', icon: FileCode2, color: 'text-amber-500', badge: 'border-amber-500 text-amber-400 bg-amber-500/10' },
+  { id: 'html_modal', label: '8. HTML Modal', icon: Code2, color: 'text-indigo-500', badge: 'border-indigo-500 text-indigo-400 bg-indigo-500/10' },
+  { id: 'looker_sql', label: '9. Fórmulas Looker', icon: Sparkles, color: 'text-teal-500', badge: 'border-teal-500 text-teal-400 bg-teal-500/10' },
+];
+
 export const GoogleArchitectureSpec: React.FC<GoogleArchitectureSpecProps> = ({
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('manual_perfis');
+
+  // Carousel & Smooth Scroll State
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Drag-to-scroll State
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const hasDragged = useRef(false);
+
+  // Check scroll position to toggle arrows & gradients
+  const updateScrollButtons = useCallback(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    updateScrollButtons();
+    const el = tabsContainerRef.current;
+    if (!el) return;
+
+    el.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [updateScrollButtons]);
+
+  // Auto-scroll active tab into view
+  useEffect(() => {
+    const activeEl = tabButtonRefs.current[activeTab];
+    const container = tabsContainerRef.current;
+    if (activeEl && container) {
+      const containerRect = container.getBoundingClientRect();
+      const tabRect = activeEl.getBoundingClientRect();
+
+      if (tabRect.left < containerRect.left + 48 || tabRect.right > containerRect.right - 48) {
+        activeEl.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center',
+        });
+      }
+    }
+  }, [activeTab]);
+
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (!tabsContainerRef.current) return;
+    const amount = Math.max(200, tabsContainerRef.current.clientWidth * 0.55);
+    tabsContainerRef.current.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
+  };
+
+  // Drag-to-scroll Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!tabsContainerRef.current) return;
+    isDragging.current = true;
+    startX.current = e.pageX - tabsContainerRef.current.offsetLeft;
+    scrollLeftStart.current = tabsContainerRef.current.scrollLeft;
+    hasDragged.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !tabsContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tabsContainerRef.current.offsetLeft;
+    const walk = x - startX.current;
+    if (Math.abs(walk) > 4) {
+      hasDragged.current = true;
+    }
+    tabsContainerRef.current.scrollLeft = scrollLeftStart.current - walk;
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    setTimeout(() => {
+      hasDragged.current = false;
+    }, 50);
+  };
+
+  const handleMouseLeave = () => {
+    isDragging.current = false;
+    hasDragged.current = false;
+  };
+
+  const handleTabClick = (tabId: TabType) => {
+    if (hasDragged.current) return;
+    setActiveTab(tabId);
+  };
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -446,133 +566,106 @@ function sanitizeDate(dateStr) {
       <div className={`rounded-2xl border shadow-md overflow-hidden transition-colors ${
         isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'
       }`}>
-        <div className={`flex border-b px-3 pt-2 overflow-x-auto gap-1.5 ${
-          isDark ? 'border-[#243756] bg-[#0F1B33]' : 'border-slate-200 bg-slate-50/80'
+        <div className={`relative border-b ${
+          isDark ? 'border-[#243756] bg-[#0F1B33]' : 'border-slate-200 bg-slate-50/90'
         }`}>
+          {/* Botão de Navegação Esquerda */}
           <button
-            onClick={() => setActiveTab('manual_perfis')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'manual_perfis'
-                ? isDark 
-                  ? 'border-blue-500 text-blue-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-blue-600 text-blue-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
+            type="button"
+            onClick={() => handleScroll('left')}
+            aria-label="Rolar abas para a esquerda"
+            className={`absolute left-1.5 top-1/2 -translate-y-1/2 z-20 p-2 rounded-xl border shadow-lg backdrop-blur-md transition-all cursor-pointer ${
+              canScrollLeft 
+                ? 'opacity-100 scale-100 pointer-events-auto' 
+                : 'opacity-0 scale-95 pointer-events-none'
+            } ${
+              isDark 
+                ? 'bg-[#16243D]/95 border-[#243756] text-slate-200 hover:text-white hover:bg-[#1E3252] shadow-black/40' 
+                : 'bg-white/95 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 shadow-slate-300/50'
             }`}
           >
-            <Users className="w-4 h-4 text-blue-500" />
-            <span>1. Perfis de Acesso & Fluxos</span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setActiveTab('insalubridade_sptf')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'insalubridade_sptf'
-                ? isDark 
-                  ? 'border-amber-500 text-amber-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-amber-600 text-amber-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
+          {/* Fade Gradient Indicador Esquerda */}
+          <div 
+            className={`absolute left-0 top-0 bottom-0 w-12 pointer-events-none z-10 transition-opacity duration-300 ${
+              canScrollLeft ? 'opacity-100' : 'opacity-0'
+            } ${
+              isDark 
+                ? 'bg-gradient-to-r from-[#0F1B33] via-[#0F1B33]/80 to-transparent' 
+                : 'bg-gradient-to-r from-slate-50 via-slate-50/80 to-transparent'
             }`}
-          >
-            <TableProperties className="w-4 h-4 text-amber-500" />
-            <span>2. Insalubridade & Fórmulas SPTF</span>
-          </button>
+          />
 
-          <button
-            onClick={() => setActiveTab('seguranca_backups')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'seguranca_backups'
-                ? isDark 
-                  ? 'border-rose-500 text-rose-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-rose-600 text-rose-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+          {/* Container Carrossel de Abas com Drag-to-Scroll e sem barra de rolagem */}
+          <div
+            ref={tabsContainerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            className="flex items-center px-4 pt-2.5 pb-2.5 overflow-x-auto gap-2 no-scrollbar scroll-smooth cursor-grab active:cursor-grabbing select-none"
           >
-            <Shield className="w-4 h-4 text-rose-500" />
-            <span>3. Segurança & Pontos de Restauração</span>
-          </button>
+            {MANUAL_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
 
-          <button
-            onClick={() => setActiveTab('etapa5_golive')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'etapa5_golive'
-                ? isDark 
-                  ? 'border-emerald-500 text-emerald-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-emerald-600 text-emerald-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Rocket className="w-4 h-4 text-emerald-500" />
-            <span>4. Go-Live & Looker Studio</span>
-          </button>
+              return (
+                <button
+                  key={tab.id}
+                  ref={(el) => { tabButtonRefs.current[tab.id] = el; }}
+                  onClick={() => handleTabClick(tab.id)}
+                  type="button"
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 active:scale-[0.98] flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+                    isActive
+                      ? isDark
+                        ? 'bg-[#1E3252] border-blue-500/80 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500/40'
+                        : 'bg-white border-blue-600 text-blue-700 shadow-sm ring-1 ring-blue-500/20'
+                      : isDark
+                        ? 'bg-[#0F1B33]/60 border-[#243756]/80 text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D] hover:border-[#335075]'
+                        : 'bg-slate-100/80 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'scale-110' : ''} ${tab.color}`} />
+                  <span>{tab.label}</span>
+                  {isActive && (
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      isDark ? 'bg-blue-400 animate-pulse' : 'bg-blue-600'
+                    }`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          <button
-            onClick={() => setActiveTab('etapa4_auditoria')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'etapa4_auditoria'
-                ? isDark 
-                  ? 'border-purple-500 text-purple-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-purple-600 text-purple-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
+          {/* Fade Gradient Indicador Direita */}
+          <div 
+            className={`absolute right-0 top-0 bottom-0 w-12 pointer-events-none z-10 transition-opacity duration-300 ${
+              canScrollRight ? 'opacity-100' : 'opacity-0'
+            } ${
+              isDark 
+                ? 'bg-gradient-to-l from-[#0F1B33] via-[#0F1B33]/80 to-transparent' 
+                : 'bg-gradient-to-l from-slate-50 via-slate-50/80 to-transparent'
             }`}
-          >
-            <ShieldAlert className="w-4 h-4 text-purple-500" />
-            <span>5. Auditoria & Alertas RH</span>
-          </button>
+          />
 
+          {/* Botão de Navegação Direita */}
           <button
-            onClick={() => setActiveTab('etapa2_csv_drive')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'etapa2_csv_drive'
-                ? isDark 
-                  ? 'border-cyan-500 text-cyan-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-cyan-600 text-cyan-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
+            type="button"
+            onClick={() => handleScroll('right')}
+            aria-label="Rolar abas para a direita"
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-20 p-2 rounded-xl border shadow-lg backdrop-blur-md transition-all cursor-pointer ${
+              canScrollRight 
+                ? 'opacity-100 scale-100 pointer-events-auto' 
+                : 'opacity-0 scale-95 pointer-events-none'
+            } ${
+              isDark 
+                ? 'bg-[#16243D]/95 border-[#243756] text-slate-200 hover:text-white hover:bg-[#1E3252] shadow-black/40' 
+                : 'bg-white/95 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 shadow-slate-300/50'
             }`}
           >
-            <UploadCloud className="w-4 h-4 text-cyan-500" />
-            <span>6. CSV UPSERT & Drive</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('code_gs')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'code_gs'
-                ? isDark 
-                  ? 'border-amber-500 text-amber-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-amber-600 text-amber-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <FileCode2 className="w-4 h-4 text-amber-500" />
-            <span>7. Code.gs Script</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('html_modal')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'html_modal'
-                ? isDark 
-                  ? 'border-indigo-500 text-indigo-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Code2 className="w-4 h-4 text-indigo-500" />
-            <span>8. HTML Modal</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('looker_sql')}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'looker_sql'
-                ? isDark 
-                  ? 'border-teal-500 text-teal-400 bg-[#16243D] rounded-t-lg' 
-                  : 'border-teal-600 text-teal-700 bg-white rounded-t-lg shadow-xs'
-                : isDark ? 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]' : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-teal-500" />
-            <span>9. Fórmulas Looker</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 

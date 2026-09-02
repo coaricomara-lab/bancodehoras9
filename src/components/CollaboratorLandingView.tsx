@@ -8,6 +8,7 @@ import { InfoTooltip } from './InfoTooltip';
 import { ContrachequeMirrorView } from './ContrachequeMirrorView';
 import { SessionTimeoutModal } from './SessionTimeoutModal';
 import { LgpdConsentBanner } from './LgpdConsentBanner';
+import { PWAInstallButton } from './PWAInstallButton';
 import { useIdleTimer } from '../hooks/useIdleTimer';
 import { 
   ShieldCheck, 
@@ -307,8 +308,10 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
           </div>
         </div>
 
-        {/* Top Right: Theme Toggle & Discrete Admin Access Button */}
+        {/* Top Right: PWA Install, Theme Toggle & Discrete Admin Access Button */}
         <div className="flex items-center space-x-1.5 sm:space-x-2.5">
+          <PWAInstallButton variant="navbar" theme={theme} />
+
           <button
             type="button"
             onClick={onToggleTheme}

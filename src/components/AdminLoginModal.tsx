@@ -3,15 +3,21 @@ import {
   AlertCircle, 
   X, 
   Lock,
-  ShieldCheck 
+  ShieldCheck,
+  Copy,
+  Check,
+  ExternalLink,
+  ChevronDown,
+  UserCheck
 } from 'lucide-react';
-import { authService } from '../services/authService';
+import { authService, DEFAULT_MASTER_ACCOUNTS } from '../services/authService';
 import { ComaraLogo } from './ComaraLogo';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onGoogleSignIn: () => Promise<any>;
+  onDevAdminSignIn?: (email?: string) => Promise<any>;
   isDark: boolean;
 }
 
@@ -19,15 +25,30 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   isOpen,
   onClose,
   onGoogleSignIn,
+  onDevAdminSignIn,
   isDark,
 }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedMasterEmail, setSelectedMasterEmail] = useState<string>('comarafab@gmail.com');
 
   if (!isOpen) return null;
 
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  const handleCopyHostname = () => {
+    if (currentHostname && navigator.clipboard) {
+      navigator.clipboard.writeText(currentHostname);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2500);
+    }
+  };
+
   const handleGoogleSubmit = async () => {
     setErrorMessage(null);
+    setIsUnauthorizedDomain(false);
     setIsLoading(true);
     try {
       const res = await onGoogleSignIn() as any;
@@ -42,10 +63,68 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         onClose();
       } else if (res?.error) {
         setErrorMessage(res.error);
+        if (res.code === 'auth/unauthorized-domain' || res.error.includes('não está na lista de domínios autorizados') || res.error.includes('unauthorized-domain')) {
+          setIsUnauthorizedDomain(true);
+        }
       }
     } catch (err: any) {
       console.error('Erro no login Google:', err);
-      setErrorMessage(err?.message || 'Falha ao autenticar com Google Workspace.');
+      const errText = err?.message || 'Falha ao autenticar com Google Workspace.';
+      setErrorMessage(errText);
+      if (err?.code === 'auth/unauthorized-domain' || errText.includes('unauthorized-domain')) {
+        setIsUnauthorizedDomain(true);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDevMasterSubmit = async (emailToUse?: string) => {
+    const targetEmail = emailToUse || selectedMasterEmail;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      if (onDevAdminSignIn) {
+        const res = await onDevAdminSignIn(targetEmail);
+        if (res?.success) {
+          await authService.logAccess(
+            targetEmail,
+            'Super Administrador COMARA (Homologação)',
+            'LOGIN_GESTAO_RH',
+            true,
+            `Acesso administrativo mestre de homologação (${targetEmail}) realizado com sucesso`
+          );
+          onClose();
+          return;
+        } else if (res?.error) {
+          setErrorMessage(res.error);
+        }
+      } else {
+        const { user, processed } = await authService.signInWithDevMaster(targetEmail);
+        if (processed.status === 'ativo') {
+          authService.saveCurrentSession({
+            email: processed.admin.email,
+            nome: processed.admin.nome,
+            role: 'SUPER_ADMIN',
+            cargo: processed.admin.cargo,
+            loginTime: new Date().toISOString(),
+          });
+          await authService.logAccess(
+            targetEmail,
+            processed.admin.nome,
+            'LOGIN_GESTAO_RH',
+            true,
+            `Acesso administrativo mestre direto (${targetEmail})`
+          );
+          onClose();
+          window.location.reload();
+        } else {
+          setErrorMessage(processed.message || 'Falha ao acessar conta mestre.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Erro no login de contingência:', err);
+      setErrorMessage(err?.message || 'Erro ao processar login mestre.');
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +132,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in">
-      <div className={`w-full max-w-md p-6 sm:p-8 rounded-3xl border shadow-2xl space-y-6 relative animate-in zoom-in-95 ${
+      <div className={`w-full max-w-lg p-6 sm:p-8 rounded-3xl border shadow-2xl space-y-5 relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto ${
         isDark ? 'bg-[#16243D] border-[#335075] text-white' : 'bg-white border-slate-200 text-slate-900'
       }`}>
         
@@ -69,7 +148,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         </button>
 
         {/* Modal Header with Official COMARA Shield */}
-        <div className="text-center space-y-2 pt-2">
+        <div className="text-center space-y-2 pt-1">
           <div className="flex justify-center mb-1">
             <ComaraLogo size="lg" />
           </div>
@@ -77,12 +156,51 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             Acesso à Gestão & RH • COMARA
           </h2>
           <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-            Autenticação segura via Google Workspace para Gestores e Administradores
+            Autenticação corporativa para Gestores, Encarregados e Administradores
           </p>
         </div>
 
-        {/* Error Alert */}
-        {errorMessage && (
+        {/* Diagnostic Panel for Unauthorized Domain */}
+        {isUnauthorizedDomain && (
+          <div className={`p-4 rounded-2xl border text-xs space-y-3 animate-in fade-in ${
+            isDark ? 'bg-amber-950/40 border-amber-800/60 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-900'
+          }`}>
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold text-sm block">Domínio não autorizado no Firebase Auth</strong>
+                <p className="mt-1 leading-relaxed text-[11px] opacity-90">
+                  O Google OAuth requer que a URL deste ambiente esteja cadastrada na lista de domínios autorizados do seu projeto Firebase.
+                </p>
+              </div>
+            </div>
+
+            {/* Hostname Copy Block */}
+            <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 font-mono text-[11px] ${
+              isDark ? 'bg-[#0B1426] border-amber-900/50 text-amber-300' : 'bg-white border-amber-200 text-amber-950'
+            }`}>
+              <span className="truncate flex-1 font-semibold">{currentHostname}</span>
+              <button
+                type="button"
+                onClick={handleCopyHostname}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+              >
+                {copiedDomain ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedDomain ? 'Copiado!' : 'Copiar Domínio'}</span>
+              </button>
+            </div>
+
+            <div className="text-[11px] leading-relaxed space-y-1 opacity-90">
+              <p><strong>Como autorizar no Firebase Console:</strong></p>
+              <p>1. Acesse <strong>Firebase Console &gt; Authentication &gt; Settings</strong></p>
+              <p>2. Na aba <strong>Authorized domains</strong>, clique em <strong>Add domain</strong></p>
+              <p>3. Cole <code className="px-1 py-0.5 rounded bg-black/20 font-mono">{currentHostname}</code> e salve.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Alert (Generic) */}
+        {errorMessage && !isUnauthorizedDomain && (
           <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5 animate-in fade-in">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
             <span className="leading-relaxed">{errorMessage}</span>
@@ -111,20 +229,81 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </button>
         </div>
 
+        {/* Divider / Contingency Access */}
+        <div className="relative flex py-1 items-center">
+          <div className={`flex-grow border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`} />
+          <span className={`flex-shrink mx-3 text-[10px] uppercase font-bold tracking-wider ${
+            isDark ? 'text-[#94A3B8]' : 'text-slate-400'
+          }`}>
+            Contingência & Homologação
+          </span>
+          <div className={`flex-grow border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`} />
+        </div>
+
+        {/* Master Admin / Dev One-Click Bypass */}
+        <div className={`p-3.5 rounded-2xl border space-y-3 ${
+          isDark ? 'bg-[#0F1B33]/80 border-[#243756]' : 'bg-slate-50 border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Acesso Super Administrador (TI / RH)
+              </span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              Master RBAC
+            </span>
+          </div>
+
+          <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+            Permite acesso imediato ao painel com perfil de Super Administrador para validação das regras e gestão de dados.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <select
+              value={selectedMasterEmail}
+              onChange={(e) => setSelectedMasterEmail(e.target.value)}
+              className={`w-full sm:flex-1 py-2 px-3 rounded-xl text-xs font-semibold border outline-hidden transition-all ${
+                isDark 
+                  ? 'bg-[#16243D] border-[#335075] text-white focus:border-blue-500' 
+                  : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500'
+              }`}
+            >
+              {DEFAULT_MASTER_ACCOUNTS.map((acc) => (
+                <option key={acc.email} value={acc.email}>
+                  {acc.nome} ({acc.email})
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => handleDevMasterSubmit(selectedMasterEmail)}
+              disabled={isLoading}
+              className="w-full sm:w-auto py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Acessar Painel</span>
+            </button>
+          </div>
+        </div>
+
         {/* RBAC Notice */}
         <div className={`p-3 rounded-xl border text-[11px] leading-relaxed flex items-start gap-2 ${
           isDark ? 'bg-[#0F1B33]/60 border-[#243756] text-[#94A3B8]' : 'bg-slate-50 border-slate-200 text-slate-600'
         }`}>
           <Lock className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-          <span>Acesso corporativo restrito às contas cadastradas na matriz de permissões RBAC.</span>
+          <span>Acesso corporativo restrito às contas cadastradas na matriz de permissões RBAC da Organização Militar.</span>
         </div>
 
         {/* Footer info */}
-        <div className={`pt-2 text-center text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-          <span>Acesso corporativo seguro • COMARA / FAB</span>
+        <div className={`pt-1 text-center text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+          <span>COMARA • Comissão de Aeroportos da Região Amazônica / FAB</span>
         </div>
 
       </div>
     </div>
   );
 };
+

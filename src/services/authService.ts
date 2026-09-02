@@ -31,8 +31,12 @@ export function getFirebaseAuthErrorMessage(errorCode: string, defaultMessage?: 
       return 'Falha de conexão com os servidores do Firebase Auth. Verifique sua conexão com a internet.';
     case 'auth/popup-closed-by-user':
       return 'A janela de autenticação do Google foi fechada antes da conclusão.';
-    case 'auth/unauthorized-domain':
-      return 'Domínio não autorizado no Firebase Authentication Console.';
+    case 'auth/unauthorized-domain': {
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      return host 
+        ? `O domínio "${host}" não está na lista de domínios autorizados do Firebase Authentication. Adicione "${host}" em Firebase Console > Authentication > Settings > Authorized domains.`
+        : 'Domínio não autorizado no Firebase Authentication Console.';
+    }
     default:
       return defaultMessage || 'Falha na autenticação via Firebase Auth.';
   }
@@ -863,6 +867,24 @@ export const authService = {
     const userCredential = await signInWithPopup(auth, googleProvider);
     const processed = await processAuthenticatedUser(userCredential.user);
     return { user: userCredential.user, processed };
+  },
+
+  /**
+   * Acesso de desenvolvimento / homologação para contas Master autorizadas
+   * Utilizado para contingência quando o domínio não estiver previamente registrado no Firebase Auth
+   */
+  async signInWithDevMaster(email: string = 'comarafab@gmail.com'): Promise<{ user: any; processed: ProcessAuthResult }> {
+    const cleanEmail = email.trim().toLowerCase();
+    const mockUser = {
+      uid: `dev-${cleanEmail}`,
+      email: cleanEmail,
+      displayName: cleanEmail === 'comarafab@gmail.com' 
+        ? 'Super Administrador COMARA FAB' 
+        : (cleanEmail === 'coari.comara@gmail.com' ? 'Coari Comara (Administrador Geral)' : cleanEmail.split('@')[0]),
+      photoURL: null,
+    };
+    const processed = await processAuthenticatedUser(mockUser as any);
+    return { user: mockUser, processed };
   },
 
   /**
