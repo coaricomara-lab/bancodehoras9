@@ -177,6 +177,25 @@ export default function App() {
     carregarControleCompetencia(currentCompetencia);
   }, [currentCompetencia, carregarControleCompetencia]);
 
+  // Debounce de 250ms na navegação de competência (Requisito 6C da especificação):
+  // cliques acelerados em avançar/voltar executam apenas a leitura da competência final.
+  const competenciaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSelectCompetencia = useCallback((comp: string) => {
+    if (competenciaDebounceRef.current) {
+      clearTimeout(competenciaDebounceRef.current);
+    }
+    competenciaDebounceRef.current = setTimeout(() => {
+      setCurrentCompetencia(comp);
+    }, 250);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (competenciaDebounceRef.current) {
+        clearTimeout(competenciaDebounceRef.current);
+      }
+    };
+  }, []);
+
   // -------------------------------------------------------------
   // 1. Real-Time Cloud Firestore Sync com Fallback Robusto & Tenancy
   // -------------------------------------------------------------
@@ -1917,7 +1936,7 @@ export default function App() {
           <CompetenciaStatusBar
             competencia={currentCompetencia}
             controle={competenciaControle}
-            onSelectCompetencia={(comp) => setCurrentCompetencia(comp)}
+            onSelectCompetencia={handleSelectCompetencia}
             onOpenManagementModal={() => setIsCompetenciaModalOpen(true)}
             isGlobalAdmin={isGlobalUser}
             theme={theme}

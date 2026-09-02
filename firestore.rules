@@ -97,6 +97,24 @@ service cloud.firestore {
       return isAdminActive() && normalizeRole() == 'GERENTE_CANTEIRO';
     }
 
+    // =========================================================================
+    // BLINDAGEM DE COMPETÊNCIA FECHADA (MÊS HOMOLOGADO) — FASE 4
+    // O bloqueio é aplicado no próprio banco, independente da interface:
+    // lançamentos de uma competência FECHADO não podem ser criados, alterados
+    // ou excluídos. O fluxo oficial de retificação é REABRIR a competência.
+    // Super Admin mantém bypass de emergência (gravação auditada).
+    // =========================================================================
+
+    function competenciaFechada(competencia) {
+      return competencia != null &&
+        exists(/databases/$(database)/documents/competencias_controle/$(competencia)) &&
+        get(/databases/$(database)/documents/competencias_controle/$(competencia)).data.status == 'FECHADO';
+    }
+
+    function lancamentoCompetenciaPermitida(data) {
+      return isSuperAdmin() || !competenciaFechada(data.get('competencia', null));
+    }
+
     function isChefeCanteiro() {
       return isAdminActive() && normalizeRole() == 'CHEFE_CANTEIRO';
     }

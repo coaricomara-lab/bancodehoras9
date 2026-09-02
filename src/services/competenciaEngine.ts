@@ -344,3 +344,52 @@ export function isFechamentoIdempotente(
     resumoExistente.hashLancamentosConsolidados === novoCalculo.hashLancamentosConsolidados
   );
 }
+
+// -------------------------------------------------------------
+// 6. FASE 4 — BLINDAGEM CONTÁBIL DO CICLO DE FECHAMENTO
+// -------------------------------------------------------------
+
+export interface ResultadoValidacaoPreRequisito {
+  valido: boolean;
+  motivo?: string;
+}
+
+/**
+ * Valida o pré-requisito de fechamento: a competência anterior (C-1) deve
+ * estar com status FECHADO, garantindo que o saldo oficial homologado já
+ * foi consolidado antes de fechar o mês seguinte.
+ * Se o controle de C-1 não existir no banco (cenário de implantação / primeiro
+ * mês do sistema), o fechamento é permitido.
+ */
+export function validarPreRequisitoFechamento(
+  statusControleAnterior: string | null | undefined
+): ResultadoValidacaoPreRequisito {
+  if (!statusControleAnterior) {
+    // Cenário de implantação: não há competência anterior no banco
+    return { valido: true };
+  }
+  if (statusControleAnterior === 'FECHADO') {
+    return { valido: true };
+  }
+  return {
+    valido: false,
+    motivo: `A competência anterior está com status ${statusControleAnterior}. Homologue e feche a competência anterior antes de fechar esta.`,
+  };
+}
+
+/**
+ * Calcula o delta (em minutos inteiros) entre o resumo homologado anterior
+ * e o novo cálculo de refechamento da mesma competência.
+ * O delta alimenta a propagação em cascata às competências posteriores.
+ * Sem resumo anterior (primeiro fechamento), retorna 0 — não há cadeia oficial.
+ */
+export function calcularDeltaRefechamentoMinutos(
+  resumoExistente: ResumoMensalContabil | null | undefined,
+  novoResumo: ResumoMensalContabil
+): number {
+  if (!resumoExistente) return 0;
+  return (
+    Math.round(novoResumo.saldoFinalTransportadoMinutos) -
+    Math.round(resumoExistente.saldoFinalTransportadoMinutos)
+  );
+}

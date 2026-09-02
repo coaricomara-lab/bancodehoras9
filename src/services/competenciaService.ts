@@ -39,6 +39,8 @@ import {
   propagarDeltaCascata,
   isFechamentoIdempotente,
   horasParaMinutos,
+  validarPreRequisitoFechamento,
+  calcularDeltaRefechamentoMinutos,
 } from './competenciaEngine';
 import { TimeRecord, InsalubrityRecord, Employee } from '../types';
 
@@ -74,6 +76,7 @@ export interface ResultadoFechamento {
   totalColaboradores: number;
   totalLancamentos: number;
   idempotente: boolean;
+  mesesAfetadosCascata: string[];
   mensagem: string;
 }
 
@@ -199,6 +202,23 @@ export const competenciaService = {
 
     const compDocRef = doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competencia);
 
+    // 0. Pré-requisito contábil (Fase 4): a competência anterior (C-1) precisa
+    // estar com status FECHADO. Sem controle de C-1 no banco (implantação /
+    // primeiro mês do sistema), o fechamento é permitido.
+    const competenciaAnteriorVerificada = getCompetenciaAnterior(competencia);
+    const controleAnteriorSnap = await getDoc(
+      doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competenciaAnteriorVerificada)
+    );
+    const statusControleAnterior = controleAnteriorSnap.exists()
+      ? String(controleAnteriorSnap.data()?.status || 'ABERTO')
+      : null;
+    const preRequisito = validarPreRequisitoFechamento(statusControleAnterior);
+    if (!preRequisito.valido) {
+      throw new Error(
+        `Fechamento bloqueado (competência anterior ${competenciaAnteriorVerificada}): ${preRequisito.motivo}`
+      );
+    }
+
     // 1. Adquire lock de concorrência com timeout de 60s
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(compDocRef);
@@ -260,6 +280,8 @@ export const competenciaService = {
 
       // 4. Executa o cálculo contábil para cada colaborador
       const novosResumos: ResumoMensalContabil[] = [];
+      // Fase 4: apura o delta retroativo de cada servidor refechado para cascata
+      const pendenciasCascata: { matricula: string; deltaMinutos: number }[] = [];
       let todosIdempotentes = resumosAtuais.length > 0 && resumosAtuais.length === colaboradores.length;
 
       for (const emp of colaboradores) {
@@ -284,6 +306,13 @@ export const competenciaService = {
         const resumoExistente = mapaResumosAtuais.get(emp.matricula);
         if (!isFechamentoIdempotente(resumoExistente, novoResumo)) {
           todosIdempotentes = false;
+          // Refechamento: registra a versão seguinte do resumo do servidor
+          novoResumo.versao = ((resumoExistente?.versao as number) || 1) + 1;
+          // Fase 4: apura o delta retroativo a propagar nas competências posteriores
+          const deltaMinutos = calcularDeltaRefechamentoMinutos(resumoExistente, novoResumo);
+          if (deltaMinutos !== 0) {
+            pendenciasCascata.push({ matricula: emp.matricula, deltaMinutos });
+          }
         }
       }
 
@@ -305,6 +334,7 @@ export const competenciaService = {
           totalColaboradores: colaboradores.length,
           totalLancamentos: lancamentosDoMes.length,
           idempotente: true,
+          mesesAfetadosCascata: [],
           mensagem: `Competência ${competencia} já homologada anteriormente sem alterações.`,
         };
       }
@@ -330,7 +360,13 @@ export const competenciaService = {
       }
 
       // 7. Atualiza o documento de controle da competência para FECHADO
+      //    Fase 4: refechamento (REABERTO/FECHADO) incrementa versaoCalculo
       await runTransaction(db, async (tx) => {
+        const snap = await tx.get(compDocRef);
+        const dataAtual = snap.exists() ? snap.data() : null;
+        const statusAnterior = dataAtual ? String(dataAtual.status || '') : '';
+        const refechamento = statusAnterior === 'FECHADO' || statusAnterior === 'REABERTO';
+        const versaoCalculo = refechamento ? ((dataAtual?.versaoCalculo as number) || 1) + 1 : 1;
         const [anoStr, mesStr] = competencia.split('-');
         tx.set(
           compDocRef,
@@ -343,7 +379,7 @@ export const competenciaService = {
             fechadoEm: new Date().toISOString(),
             fechadoPorEmail: operadorEmail,
             totalColaboradoresFechados: colaboradores.length,
-            versaoCalculo: 1,
+            versaoCalculo,
             atualizadoEm: new Date().toISOString(),
           },
           { merge: true }
@@ -360,13 +396,32 @@ export const competenciaService = {
         detalhes: `Homologação e Fechamento da Competência ${competencia}. ${colaboradores.length} colaboradores consolidados. Total lançamentos: ${lancamentosDoMes.length}.`,
       });
 
+      // 9. Fase 4 — Recálculo em cascata: propaga o delta retroativo às
+      //    competências posteriores já homologadas (movimentos próprios intactos)
+      const mesesAfetadosCascata: string[] = [];
+      for (const pendencia of pendenciasCascata) {
+        const resultadoCascata = await this.recalcularCascata({
+          matricula: pendencia.matricula,
+          competenciaOrigem: competencia,
+          deltaMinutos: pendencia.deltaMinutos,
+          operadorEmail,
+          motivo: `Refechamento homologado da competência ${competencia}`,
+        });
+        mesesAfetadosCascata.push(...resultadoCascata.mesesAfetados);
+      }
+
       return {
         sucesso: true,
         competencia,
         totalColaboradores: colaboradores.length,
         totalLancamentos: lancamentosDoMes.length,
         idempotente: false,
-        mensagem: `Competência ${competencia} homologada e fechada com sucesso!`,
+        mesesAfetadosCascata,
+        mensagem: `Competência ${competencia} homologada e fechada com sucesso!${
+          mesesAfetadosCascata.length > 0
+            ? ` Recálculo em cascata propagado a ${mesesAfetadosCascata.length} resumo(s) de competências posteriores.`
+            : ''
+        }`,
       };
     } catch (error: any) {
       // Libera a trava em caso de falha
