@@ -4,23 +4,26 @@
  */
 
 /**
- * Limpa um CPF removendo caracteres especiais (., -, espaços)
+ * Limpa um CPF removendo todos os caracteres não numéricos
  * @param cpf String contendo o CPF (formatado ou não)
  * @returns CPF limpo contendo apenas dígitos
  */
 export function cleanCPF(cpf: string | null | undefined): string {
   if (!cpf) return '';
-  return cpf.toString().replace(/[.\-\s]/g, '').trim();
+  return cpf.toString().replace(/\D/g, '').trim();
 }
 
 /**
- * Valida se uma string é um CPF com formato correto (11 dígitos)
+ * Valida se uma string é um CPF com formato correto (11 dígitos numéricos válidos)
  * @param cpf CPF a validar
  * @returns true se é um CPF válido
  */
 export function isValidCPF(cpf: string | null | undefined): boolean {
   const clean = cleanCPF(cpf);
-  return /^\d{11}$/.test(clean);
+  if (clean.length !== 11) return false;
+  // Rejeita sequências de dígitos repetidos óbvias (ex: 00000000000, 11111111111)
+  if (/^(\d)\1{10}$/.test(clean)) return false;
+  return true;
 }
 
 /**
@@ -54,28 +57,46 @@ export async function generateCPFHash(cpf: string | null | undefined): Promise<s
 }
 
 /**
- * Mascara um CPF no padrão LGPD: ***.XXX.XXX-**
- * Mostra apenas os 5 dígitos centrais para identificação visual
+ * Mascara um CPF no padrão LGPD oficial: XXX.***.***-YY
+ * Exibe exatamente os 3 primeiros e os 2 últimos dígitos para conferência visual segura.
  * 
- * @param cpf String contendo o CPF (formatado ou não)
- * @returns CPF mascarado no padrão ***.XXX.XXX-**
+ * @param cpf String contendo o CPF (formatado, limpo ou parcialmente mascarado)
+ * @returns CPF mascarado no padrão XXX.***.***-YY
  * 
  * @example
- * maskCPF('123.456.789-01'); // Retorna: ***.456.789-**
- * maskCPF('12345678901');    // Retorna: ***.456.789-**
+ * maskCPF('123.456.789-01'); // Retorna: 123.***.***-01
+ * maskCPF('12345678901');    // Retorna: 123.***.***-01
+ * maskCPF('00394429009');    // Retorna: 003.***.***-09
  */
 export function maskCPF(cpf: string | null | undefined): string {
-  const clean = cleanCPF(cpf);
+  if (!cpf) return '***.***.***-**';
   
-  if (!clean || !isValidCPF(clean)) {
-    return '***.***.***-**';
+  const rawStr = cpf.toString().trim();
+  const clean = cleanCPF(rawStr);
+  
+  // Se possui 11 dígitos completos
+  if (clean.length === 11) {
+    return `${clean.substring(0, 3)}.***.***-${clean.substring(9, 11)}`;
+  }
+  
+  // Se já veio com padrão de 3 primeiros e 2 últimos (ex: "123.***.***-01" ou "123***01")
+  const match3and2 = rawStr.match(/^(\d{3})[.\s\*\-]*(\d{2})$/);
+  if (match3and2) {
+    return `${match3and2[1]}.***.***-${match3and2[2]}`;
   }
 
-  // Formata como ***.XXX.XXX-** (mostra apenas os 5 dígitos centrais)
-  // Exemplo: 12345678901 -> ***.456.789-**
-  const masked = `***.${clean.substring(3, 6)}.${clean.substring(6, 9)}-**`;
-  
-  return masked;
+  // Se veio com os 3 primeiros e os 2 últimos em formato já mascarado padrão
+  if (/^\d{3}\.\*{3}\.\*{3}\-\d{2}$/.test(rawStr)) {
+    return rawStr;
+  }
+
+  // Se possuir entre 5 e 10 dígitos limpos (ex: sem zeros à esquerda)
+  if (clean.length >= 5 && !rawStr.includes('*')) {
+    const padded = clean.padStart(11, '0');
+    return `${padded.substring(0, 3)}.***.***-${padded.substring(9, 11)}`;
+  }
+
+  return '***.***.***-**';
 }
 
 /**

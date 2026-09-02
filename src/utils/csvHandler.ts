@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { Employee, TimeRecord, Branch, EmployeeStatus, OccurrenceType, InsalubrityRecord } from '../types';
 import { calculateSPTFBalance } from './calculations';
+import { cleanCPF, maskCPF, formatCPF, isValidCPF } from './lgpdUtils';
 
 export interface CSVImportResult<T> {
   success: boolean;
@@ -184,6 +185,10 @@ export function parseEmployeesCSV(
             row,
             'urlfotoperfil', 'url_foto_perfil', 'foto', 'fotoperfil', 'avatar', 'avatarurl'
           );
+          const cpfRaw = getRowValue(
+            row,
+            'cpf', 'num_cpf', 'numcpf', 'cpf_numero', 'cpfnumero', 'documento', 'doc_cpf', 'doc', 'cic', 'taxid'
+          );
 
           if (!matriculaRaw || !nomeRaw) {
             // Se linha totalmente vazia, apenas ignora
@@ -251,6 +256,19 @@ export function parseEmployeesCSV(
             ? true
             : (isDuplicate && prevEmp?.senhaCadastrada !== undefined ? prevEmp.senhaCadastrada : false);
 
+          // Tratamento de CPF (LGPD: XXX.***.***-YY)
+          let cpfValue: string | undefined = undefined;
+          let cpfMascarado: string | undefined = undefined;
+          if (cpfRaw) {
+            const clean = cleanCPF(cpfRaw);
+            if (clean.length === 11) {
+              cpfValue = formatCPF(clean);
+              cpfMascarado = maskCPF(clean);
+            } else if (cpfRaw.includes('*')) {
+              cpfMascarado = maskCPF(cpfRaw);
+            }
+          }
+
           const employeeObj: Employee = {
             id: isDuplicate && prevEmp ? prevEmp.id : `emp-${Date.now()}-${index}`,
             matricula, // Preservando zeros à esquerda
@@ -260,6 +278,8 @@ export function parseEmployeesCSV(
             departamento: departamentoRaw || undefined,
             sede: sedeNormalized,
             sede_origem: sedeNormalized,
+            cpf: cpfValue || prevEmp?.cpf,
+            cpfMascarado: cpfMascarado || (cpfValue ? maskCPF(cpfValue) : prevEmp?.cpfMascarado),
             dataAdmissao,
             status: statusNormalized,
             email: emailRaw || undefined,

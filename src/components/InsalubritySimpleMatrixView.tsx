@@ -34,6 +34,7 @@ import { IconButton } from './IconButton';
 import { InfoTooltip } from './InfoTooltip';
 import { ImportInsalubrityMatrixModal } from './ImportInsalubrityMatrixModal';
 import { InsalubritySimplePrintModal } from './InsalubritySimplePrintModal';
+import { MonthYearPicker } from './MonthYearPicker';
 
 interface InsalubritySimpleMatrixViewProps {
   employees: Employee[];
@@ -609,14 +610,14 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
       {/* ------------------------------------------------------------- */}
       {/* 1. CABEÇALHO INSTITUCIONAL COMARA (ESTILO LOOKER DASHBOARD)   */}
       {/* ------------------------------------------------------------- */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl shadow-xs border transition-colors ${
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl shadow-xs border transition-colors ${
         isDark 
           ? 'bg-[#16243D] text-white border-[#243756]' 
           : 'bg-white text-slate-900 border-slate-200'
       }`}>
         <div>
           <div className="flex items-center space-x-2">
-            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full flex items-center gap-1.5 font-mono border ${
+            <span className={`px-3 py-1 text-xs font-semibold rounded-full flex items-center gap-1.5 font-mono border ${
               isDark 
                 ? 'bg-[#243756] text-blue-400 border-[#335075]' 
                 : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -629,13 +630,13 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               content="Gestão executiva e controle de apontamentos de atividades e insalubridade em canteiros de obras. Conformidade com NR-15 e normativas COMARA."
             />
           </div>
-          <h1 className={`text-lg font-bold mt-1.5 tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`text-xl sm:text-2xl font-bold mt-2 tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Painel Executivo de Gestão de Insalubridade
           </h1>
         </div>
 
         {/* Ações Rápidas do Cabeçalho */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-2">
           {/* Botão + Lançamento em Lote */}
           <IconButton
             id="btn-insalubridade-lancamento-lote"
@@ -665,7 +666,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
           <div className="relative">
             <button
               onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-              className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
+              className={`px-4 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                 isDark
                   ? 'border-[#335075] hover:bg-[#243756] text-[#E2E8F0] bg-[#0F1B33]'
                   : 'border-slate-200 hover:bg-slate-100 text-slate-700 bg-slate-50'
@@ -673,7 +674,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               id="btn-insalubridade-mais-acoes"
             >
               <span>+ Ações</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showActionsDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showActionsDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             {showActionsDropdown && (
@@ -688,11 +689,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       setIsBatchModalOpen(true);
                       setShowActionsDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                    className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                       isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <Plus className="w-3.5 h-3.5 text-blue-400" />
+                    <Plus className="w-4 h-4 text-blue-400" />
                     Lançamento em Lote
                   </button>
                   <button
@@ -700,11 +701,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       setIsPrintModalOpen(true);
                       setShowActionsDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                    className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                       isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <Printer className="w-3.5 h-3.5 text-blue-400" />
+                    <Printer className="w-4 h-4 text-blue-400" />
                     Imprimir Folha
                   </button>
                   <button
@@ -712,11 +713,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       setIsImportModalOpen(true);
                       setShowActionsDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                    className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                       isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <UploadCloud className="w-3.5 h-3.5 text-amber-500" />
+                    <UploadCloud className="w-4 h-4 text-amber-500" />
                     Importar Folha (CSV)
                   </button>
                   <button
@@ -724,11 +725,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       handleExportOfficialSpreadsheetCSV();
                       setShowActionsDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                    className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                       isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <Download className="w-4 h-4 text-emerald-400" />
                     Exportar (CSV)
                   </button>
                   {onOpenConversionModal && (userRole === 'SUPER_ADMIN' || userRole === 'GESTOR_RH' || userRole === 'GERENTE_CAMPO' || userRole === 'ROLE_GERENTE') && (
@@ -737,11 +738,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                         onOpenConversionModal();
                         setShowActionsDropdown(false);
                       }}
-                      className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer border-t ${
+                      className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer border-t ${
                         isDark ? 'hover:bg-[#243756] text-[#E2E8F0] border-[#243756]' : 'hover:bg-slate-100 text-slate-700 border-slate-100'
                       }`}
                     >
-                      <ArrowRightLeft className="w-3.5 h-3.5 text-amber-500" />
+                      <ArrowRightLeft className="w-4 h-4 text-amber-500" />
                       Converter p/ NR-15
                     </button>
                   )}
@@ -751,11 +752,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                         onNavigateToReports();
                         setShowActionsDropdown(false);
                       }}
-                      className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                      className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                         isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                       }`}
                     >
-                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                      <FileText className="w-4 h-4 text-emerald-400" />
                       Relatório Simples
                     </button>
                   )}
@@ -765,11 +766,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                         onSwitchToCompleteMode();
                         setShowActionsDropdown(false);
                       }}
-                      className={`w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
+                      className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer ${
                         isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-100 text-slate-700'
                       }`}
                     >
-                      <Settings2 className="w-3.5 h-3.5 text-blue-400" />
+                      <Settings2 className="w-4 h-4 text-blue-400" />
                       Modo Completo (NR-15)
                     </button>
                   )}
@@ -783,16 +784,16 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
       {/* ------------------------------------------------------------- */}
       {/* 2. CARDS RESUMO DO PERÍODO SELECIONADO (ESTILO LOOKER DASHBOARD) */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-5">
         {/* KPI 1: Efetivo Filtrado */}
-        <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
+        <div className={`p-5 xl:p-6 rounded-2xl border shadow-xs transition-all ${
           isDark 
             ? 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
             : 'bg-white border-gray-200 hover:border-gray-300'
         }`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <p className={`text-xs sm:text-sm font-bold uppercase font-mono tracking-wide ${isDark ? 'text-[#94A3B8]' : 'text-gray-600'}`}>
                 Efetivo Filtrado
               </p>
               <InfoTooltip 
@@ -800,27 +801,27 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 content="Quantidade total de colaboradores filtrados pelos critérios atuais de sede e cargo."
               />
             </div>
-            <div className={`p-1.5 rounded-lg ${isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-              <Users className="w-4 h-4" />
+            <div className={`p-2 rounded-xl ${isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+              <Users className="w-5 h-5" />
             </div>
           </div>
-          <h2 className={`text-2xl sm:text-3xl font-mono font-light ${isDark ? 'text-[#E2E8F0]' : 'text-gray-900'}`}>
+          <h2 className={`text-3xl sm:text-4xl font-mono font-light ${isDark ? 'text-[#E2E8F0]' : 'text-gray-900'}`}>
             {filteredEmployees.length}
           </h2>
-          <p className={`text-[10px] mt-1.5 font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <p className={`text-xs mt-2 font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
             {activeCount} ativos • {filteredEmployees.length - activeCount} outros
           </p>
         </div>
 
         {/* KPI 2: Dias Úteis no Período */}
-        <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
+        <div className={`p-5 xl:p-6 rounded-2xl border shadow-xs transition-all ${
           isDark 
             ? 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
             : 'bg-white border-gray-200 hover:border-gray-300'
         }`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <p className={`text-xs sm:text-sm font-bold uppercase font-mono tracking-wide ${isDark ? 'text-[#94A3B8]' : 'text-gray-600'}`}>
                 Dias Úteis no Período
               </p>
               <InfoTooltip 
@@ -828,27 +829,27 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 content="Quantidade de dias úteis (segunda a sexta-feira) na janela ou quinzena exibida."
               />
             </div>
-            <div className={`p-1.5 rounded-lg ${isDark ? 'bg-amber-950/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-              <Calendar className="w-4 h-4" />
+            <div className={`p-2 rounded-xl ${isDark ? 'bg-amber-950/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+              <Calendar className="w-5 h-5" />
             </div>
           </div>
-          <h2 className={`text-2xl sm:text-3xl font-mono font-light ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>
+          <h2 className={`text-3xl sm:text-4xl font-mono font-light ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>
             {periodStats.diasUteisPeriodo}
           </h2>
-          <p className={`text-[10px] mt-1.5 font-mono ${isDark ? 'text-amber-500/80' : 'text-amber-700'}`}>
+          <p className={`text-xs mt-2 font-mono ${isDark ? 'text-amber-500/80' : 'text-amber-700'}`}>
             de {visibleDays.length} dias ({currentPeriodLabel})
           </p>
         </div>
 
         {/* KPI 3: Dias Trabalhados (Período) */}
-        <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
+        <div className={`p-5 xl:p-6 rounded-2xl border shadow-xs transition-all ${
           isDark 
             ? 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
             : 'bg-white border-gray-200 hover:border-gray-300'
         }`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <p className={`text-xs sm:text-sm font-bold uppercase font-mono tracking-wide ${isDark ? 'text-[#94A3B8]' : 'text-gray-600'}`}>
                 Dias Trabalhados (Período)
               </p>
               <InfoTooltip 
@@ -856,27 +857,27 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 content="Total de apontamentos de atividades desempenhadas no período visível da grade."
               />
             </div>
-            <div className={`p-1.5 rounded-lg ${isDark ? 'bg-emerald-950/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-              <Clock className="w-4 h-4" />
+            <div className={`p-2 rounded-xl ${isDark ? 'bg-emerald-950/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+              <Clock className="w-5 h-5" />
             </div>
           </div>
-          <h2 className={`text-2xl sm:text-3xl font-mono font-light ${isDark ? 'text-green-400' : 'text-emerald-600'}`}>
+          <h2 className={`text-3xl sm:text-4xl font-mono font-light ${isDark ? 'text-green-400' : 'text-emerald-600'}`}>
             {periodStats.totalApontamentosPeriodo}
           </h2>
-          <p className={`text-[10px] mt-1.5 font-mono ${isDark ? 'text-green-400/80' : 'text-emerald-700'}`}>
+          <p className={`text-xs mt-2 font-mono ${isDark ? 'text-green-400/80' : 'text-emerald-700'}`}>
             {periodStats.totalApontamentosMes} no mês total • {visibleDays.length > 0 ? (periodStats.totalApontamentosPeriodo / visibleDays.length).toFixed(1) : '0.0'} méd/dia
           </p>
         </div>
 
         {/* KPI 4: Efetivo com Atividade */}
-        <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
+        <div className={`p-5 xl:p-6 rounded-2xl border shadow-xs transition-all ${
           isDark 
             ? 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
             : 'bg-white border-gray-200 hover:border-gray-300'
         }`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <p className={`text-xs sm:text-sm font-bold uppercase font-mono tracking-wide ${isDark ? 'text-[#94A3B8]' : 'text-gray-600'}`}>
                 Efetivo com Atividade
               </p>
               <InfoTooltip 
@@ -884,14 +885,14 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 content="Quantidade de colaboradores distintos que possuem ao menos 1 dia trabalhado/apontado no período."
               />
             </div>
-            <div className={`p-1.5 rounded-lg ${isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-              <Users className="w-4 h-4" />
+            <div className={`p-2 rounded-xl ${isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+              <Users className="w-5 h-5" />
             </div>
           </div>
-          <h2 className={`text-2xl sm:text-3xl font-mono font-light ${isDark ? 'text-[#3B82F6]' : 'text-blue-600'}`}>
+          <h2 className={`text-3xl sm:text-4xl font-mono font-light ${isDark ? 'text-[#3B82F6]' : 'text-blue-600'}`}>
             {periodStats.totalColaboradoresAtivosPeriodo}
           </h2>
-          <p className={`text-[10px] mt-1.5 font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+          <p className={`text-xs mt-2 font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
             de {filteredEmployees.length} ({filteredEmployees.length > 0 ? Math.round((periodStats.totalColaboradoresAtivosPeriodo / filteredEmployees.length) * 100) : 0}% de adesão)
           </p>
         </div>
@@ -900,41 +901,25 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
       {/* ------------------------------------------------------------- */}
       {/* 3. PAINEL PRINCIPAL: CONTROLES DE DATA, FILTROS E MATRIZ       */}
       {/* ------------------------------------------------------------- */}
-      <div className={`p-5 rounded-2xl border shadow-xs transition-colors space-y-4 ${
+      <div className={`p-5 xl:p-6 rounded-2xl border shadow-xs transition-colors space-y-4 ${
         isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'
       }`}>
         <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
           {/* Seletor de Mês, Ano e Período */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Navegação de Mês */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handlePrevMonth}
-                className={`p-2 rounded-xl border transition-colors active:scale-[0.98] cursor-pointer ${
-                  isDark ? 'border-[#243756] hover:bg-[#0F1B33] text-gray-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
-                }`}
-                title="Mês Anterior"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold font-mono flex items-center gap-2 ${
-                isDark ? 'bg-[#0F1B33] border-[#243756] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-              }`}>
-                <Calendar className="w-4 h-4 text-amber-500" />
-                <span>{MONTH_NAMES[selectedMonth].toUpperCase()} / {selectedYear}</span>
-              </div>
-
-              <button
-                onClick={handleNextMonth}
-                className={`p-2 rounded-xl border transition-colors active:scale-[0.98] cursor-pointer ${
-                  isDark ? 'border-[#243756] hover:bg-[#0F1B33] text-gray-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
-                }`}
-                title="Próximo Mês"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Navegação e Seletor Interativo de Mês e Ano via Calendário */}
+            <MonthYearPicker
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onChange={(newMonth, newYear) => {
+                setSelectedMonth(newMonth);
+                setSelectedYear(newYear);
+              }}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              theme={theme}
+              accentColor="amber"
+            />
 
             {/* SELETORES DE MODO DE PERÍODO */}
             <div className={`flex items-center p-1 rounded-xl border ${
@@ -943,7 +928,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               <button
                 type="button"
                 onClick={() => handleSelectQuinzena('Q1')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'Q1'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -954,7 +939,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               <button
                 type="button"
                 onClick={() => handleSelectQuinzena('Q2')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'Q2'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -965,7 +950,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               <button
                 type="button"
                 onClick={handleSelectFullMonth}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'FULL'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
@@ -986,7 +971,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 setOnlyWithRecords(!onlyWithRecords);
                 if (selectedDayFilter) setSelectedDayFilter(null);
               }}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                 onlyWithRecords
                   ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-xs'
                   : isDark
@@ -995,19 +980,19 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
               }`}
               title="Alternar: Exibir apenas colaboradores que possuem insalubridade cadastrada"
             >
-              <Users className="w-3.5 h-3.5 text-amber-500" />
+              <Users className="w-4 h-4 text-amber-500" />
               <span>{onlyWithRecords ? 'Com Insalubridade' : 'Todos Colaboradores'}</span>
             </button>
 
             {/* Busca Colaborador */}
-            <div className="relative flex-1 md:w-44">
-              <Search className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`} />
+            <div className="relative flex-1 md:w-52">
+              <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDark ? 'text-gray-500' : 'text-slate-400'}`} />
               <input
                 type="text"
                 placeholder="Buscar col."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-8 pr-3 py-1.5 rounded-xl border text-xs outline-hidden ${
+                className={`w-full pl-9 pr-3.5 py-2 rounded-xl border text-xs sm:text-sm outline-hidden ${
                   isDark ? 'bg-[#0F1B33] border-[#243756] text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20'
                 }`}
               />
@@ -1017,15 +1002,15 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
             <div className="relative">
               <button
                 onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                   isDark
                     ? 'border-[#243756] hover:bg-[#243756] text-[#E2E8F0]'
                     : 'border-slate-200 hover:bg-slate-100 text-slate-700'
                 }`}
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" />
+                <SlidersHorizontal className="w-4 h-4 text-amber-500" />
                 <span>Filtros</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${showFiltersDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFiltersDropdown ? 'rotate-180' : ''}`} />
               </button>
 
               {showFiltersDropdown && (
@@ -1219,17 +1204,17 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
           </div>
         )}
 
-        <div className="overflow-x-auto max-h-[620px] relative">
-          <table className="w-full text-[11px] border-collapse text-left">
+        <div className="overflow-x-auto max-h-[720px] 2xl:max-h-[820px] relative">
+          <table className="w-full text-xs sm:text-sm border-collapse text-left">
             <thead className={`sticky top-0 z-30 ${
               isDark ? 'bg-[#243756] text-[#E2E8F0]' : 'bg-slate-100 text-slate-800'
             }`}>
               <tr>
                 {/* Colunas Fixas de Identificação (Esquerda) */}
-                <th className="py-2.5 px-3 font-mono font-bold w-10 min-w-[40px] text-center border-r border-b border-black/10 dark:border-white/10 sticky left-0 z-40 bg-[#243756] dark:bg-[#243756] light:bg-slate-100">
+                <th className="py-3 px-3 font-mono font-bold w-12 min-w-[48px] text-center border-r border-b border-black/10 dark:border-white/10 sticky left-0 z-40 bg-[#243756] dark:bg-[#243756] light:bg-slate-100 text-xs sm:text-sm">
                   Nº
                 </th>
-                <th className="py-2.5 px-3 font-bold min-w-[210px] max-w-[260px] border-r border-b border-black/10 dark:border-white/10 sticky left-10 z-40 bg-[#243756] dark:bg-[#243756] light:bg-slate-100">
+                <th className="py-3 px-4 font-bold min-w-[240px] max-w-[320px] border-r border-b border-black/10 dark:border-white/10 sticky left-12 z-40 bg-[#243756] dark:bg-[#243756] light:bg-slate-100 text-xs sm:text-sm">
                   COLABORADOR / MATRÍCULA
                 </th>
 
@@ -1243,7 +1228,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       onClick={() => {
                         setSelectedDayFilter(prev => prev === d.formattedDate ? null : d.formattedDate);
                       }}
-                      className={`py-2 px-1 font-mono text-center font-bold min-w-[46px] border-r border-b border-black/10 dark:border-white/10 cursor-pointer select-none transition-all ${
+                      className={`py-2.5 px-1 font-mono text-center font-bold min-w-[50px] xl:min-w-[56px] border-r border-b border-black/10 dark:border-white/10 cursor-pointer select-none transition-all ${
                         isDaySelected
                           ? 'bg-amber-500 text-black shadow-inner ring-2 ring-amber-400 z-30 scale-[1.02]'
                           : d.isWeekend 
@@ -1253,10 +1238,10 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       title={`Clique para filtrar lançamentos do dia ${d.dayNumber} (${isDaySelected ? 'Filtro Ativo - Clique para desativar' : 'Clique para filtrar'})`}
                     >
                       <div className="flex flex-col items-center justify-center">
-                        <div className={`text-[12px] font-black leading-tight ${isDaySelected ? 'text-black underline decoration-2' : ''}`}>
+                        <div className={`text-[13px] sm:text-[14px] font-black leading-tight ${isDaySelected ? 'text-black underline decoration-2' : ''}`}>
                           {d.dayNumber}
                         </div>
-                        <div className={`text-[9px] font-semibold ${
+                        <div className={`text-[10px] sm:text-[11px] font-semibold ${
                           isDaySelected ? 'text-black font-black' : d.isWeekend ? 'text-red-400 font-bold' : isDark ? 'text-gray-400' : 'text-slate-500'
                         }`}>
                           {d.weekdayInitial}
@@ -1270,12 +1255,12 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                 })}
 
                 {/* Colunas Finais: Total de Dias Trabalhados e Ações Rápidas (STICKY FIXO À DIREITA) */}
-                <th className={`py-2.5 px-3 font-bold text-center w-[130px] min-w-[130px] border-l-2 border-r border-b border-amber-500/40 sticky right-[110px] z-40 ${
+                <th className={`py-3 px-3 font-bold text-center w-[140px] min-w-[140px] border-l-2 border-r border-b border-amber-500/40 sticky right-[120px] z-40 text-xs sm:text-sm ${
                   isDark ? 'bg-[#243756] text-white shadow-[-6px_0_12px_rgba(0,0,0,0.35)]' : 'bg-slate-100 text-slate-900 shadow-[-6px_0_12px_rgba(0,0,0,0.08)]'
                 }`}>
                   TOTAL DIAS
                 </th>
-                <th className={`py-2.5 px-3 font-bold text-center w-[110px] min-w-[110px] border-b border-black/10 dark:border-white/10 sticky right-0 z-40 ${
+                <th className={`py-3 px-3 font-bold text-center w-[120px] min-w-[120px] border-b border-black/10 dark:border-white/10 sticky right-0 z-40 text-xs sm:text-sm ${
                   isDark ? 'bg-[#243756] text-[#E2E8F0]' : 'bg-slate-100 text-slate-800'
                 }`}>
                   AÇÕES RÁPIDAS
@@ -1288,7 +1273,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
             }`}>
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleDays.length + 5} className="py-12 text-center text-xs text-gray-500 font-sans">
+                  <td colSpan={visibleDays.length + 5} className="py-12 text-center text-xs sm:text-sm text-gray-500 font-sans">
                     Nenhum colaborador encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -1313,20 +1298,20 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       }`}
                     >
                       {/* 1. Nº Sequencial */}
-                      <td className={`py-2 px-2 text-center text-[10px] font-bold border-r border-black/5 dark:border-white/5 sticky left-0 z-20 ${
+                      <td className={`py-2.5 px-2 text-center text-xs font-bold border-r border-black/5 dark:border-white/5 sticky left-0 z-20 ${
                         isDark ? 'bg-[#16243D] group-hover:bg-[#1B2D4A]' : 'bg-white group-hover:bg-slate-50'
                       }`}>
                         {index + 1}
                       </td>
 
                       {/* 2. Nome e Matrícula */}
-                      <td className={`py-2 px-3 border-r border-black/5 dark:border-white/5 sticky left-10 z-20 ${
+                      <td className={`py-2.5 px-4 border-r border-black/5 dark:border-white/5 sticky left-12 z-20 ${
                         isDark ? 'bg-[#16243D] group-hover:bg-[#1B2D4A]' : 'bg-white group-hover:bg-slate-50'
                       }`}>
-                        <div className="font-sans font-bold truncate max-w-[240px] text-xs" title={emp.nome}>
+                        <div className="font-sans font-bold truncate max-w-[260px] xl:max-w-[300px] text-xs sm:text-sm" title={emp.nome}>
                           {emp.nome}
                         </div>
-                        <div className="text-[10px] text-gray-400 flex items-center gap-1.5">
+                        <div className="text-[11px] sm:text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
                           <span>MAT: {emp.matricula}</span>
                           <span>•</span>
                           <span>{emp.sede_atual || emp.sede}</span>
@@ -1350,7 +1335,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                           <td
                             key={d.dayNumber}
                             onClick={() => handleCellClick(emp, d)}
-                            className={`py-1 px-0.5 text-center cursor-pointer select-none transition-colors active:scale-[0.98] border-r border-black/5 dark:border-white/5 ${
+                            className={`py-1.5 px-1 text-center cursor-pointer select-none transition-colors active:scale-[0.98] border-r border-black/5 dark:border-white/5 ${
                               d.isWeekend 
                                 ? (isDark ? 'bg-black/20 hover:bg-amber-500/20' : 'bg-slate-100/60 hover:bg-amber-100/60') 
                                 : isDark ? 'hover:bg-amber-500/20' : 'hover:bg-amber-100/60'
@@ -1362,11 +1347,11 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                             }
                           >
                             {record ? (
-                              <div className="mx-auto min-w-[34px] px-1 py-1 rounded-md bg-amber-500 text-black text-[9px] font-black tracking-tight leading-none truncate shadow-xs">
+                              <div className="mx-auto min-w-[38px] px-1.5 py-1 rounded-md bg-amber-500 text-black text-[10px] sm:text-[11px] font-black tracking-tight leading-none truncate shadow-xs">
                                 {shortCode || 'OK'}
                               </div>
                             ) : (
-                              <div className="w-7 h-6 mx-auto rounded-md flex items-center justify-center text-transparent hover:text-gray-400 text-xs">
+                              <div className="w-8 h-7 mx-auto rounded-md flex items-center justify-center text-transparent hover:text-gray-400 text-xs">
                                 •
                               </div>
                             )}
@@ -1375,13 +1360,13 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       })}
 
                       {/* 5. Total de Dias Trabalhados (FIXO À DIREITA / STICKY) */}
-                      <td className={`py-2 px-2 text-center font-bold text-xs border-l-2 border-r border-amber-500/40 sticky right-[110px] z-20 w-[130px] min-w-[130px] ${
+                      <td className={`py-2.5 px-2 text-center font-bold border-l-2 border-r border-amber-500/40 sticky right-[120px] z-20 w-[140px] min-w-[140px] ${
                         isDark 
                           ? 'bg-[#16243D] group-hover:bg-[#1B2D4A] shadow-[-6px_0_12px_rgba(0,0,0,0.35)]' 
                           : 'bg-white group-hover:bg-slate-50 shadow-[-6px_0_12px_rgba(0,0,0,0.08)]'
                       }`}>
-                        <div className="flex flex-col items-center justify-center gap-0.5">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className={`px-3 py-1 rounded-full text-xs sm:text-sm font-black ${
                             employeeVisibleDaysCount > 0 
                               ? 'bg-emerald-500/20 text-emerald-400' 
                               : isDark ? 'text-gray-500' : 'text-slate-400'
@@ -1389,7 +1374,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                             {employeeVisibleDaysCount} {employeeVisibleDaysCount === 1 ? 'dia' : 'dias'}
                           </span>
                           {periodViewMode !== 'FULL' && (
-                            <span className={`text-[9px] font-mono ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] sm:text-[11px] font-mono ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                               Mês: <strong>{employeeMonthDaysCount}d</strong>
                             </span>
                           )}
@@ -1397,13 +1382,13 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                       </td>
 
                       {/* 6. Ações Rápidas por Linha (FIXO À DIREITA / STICKY) */}
-                      <td className={`py-1 px-2 text-center sticky right-0 z-20 w-[110px] min-w-[110px] border-b border-black/5 dark:border-white/5 ${
+                      <td className={`py-2 px-2 text-center sticky right-0 z-20 w-[120px] min-w-[120px] border-b border-black/5 dark:border-white/5 ${
                         isDark ? 'bg-[#16243D] group-hover:bg-[#1B2D4A]' : 'bg-white group-hover:bg-slate-50'
                       }`}>
-                        <div className="flex items-center justify-center gap-1 font-sans">
+                        <div className="flex items-center justify-center gap-1.5 font-sans">
                           <button
                             onClick={() => handleFillWeekdaysForEmployee(emp)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors active:scale-[0.98] cursor-pointer ${
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors active:scale-[0.98] cursor-pointer ${
                               isDark 
                                 ? 'bg-blue-950/40 text-blue-300 border-blue-800/50 hover:bg-blue-900/60' 
                                 : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
@@ -1416,7 +1401,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                           {employeeMonthDaysCount > 0 && (
                             <button
                               onClick={() => handleClearQuinzenaForEmployee(emp)}
-                              className={`p-1 rounded-lg text-[10px] border transition-colors active:scale-[0.98] cursor-pointer ${
+                              className={`p-1.5 rounded-lg text-xs border transition-colors active:scale-[0.98] cursor-pointer ${
                                 isDark 
                                 ? 'text-red-400 border-red-900/40 hover:bg-red-950/40' 
                                 : 'text-red-600 border-red-200 hover:bg-red-50'

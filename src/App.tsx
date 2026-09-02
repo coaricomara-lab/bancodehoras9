@@ -1541,7 +1541,7 @@ export default function App() {
               <span>Sair</span>
             </button>
           </header>
-          <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+          <main className="flex-1 p-4 md:p-6 max-w-[1880px] mx-auto w-full">
             <GoogleArchitectureSpec theme={theme} />
           </main>
         </div>
@@ -1838,7 +1838,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-[1880px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
         <ErrorBoundary fallbackTitle="Erro ao carregar aba selecionada">
           {activeTab === 'dashboard' && (
             <LookerDashboard
@@ -2086,12 +2086,12 @@ export default function App() {
 
       {/* Footer */}
       <footer className={`${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#94A3B8]' : 'bg-white border-slate-200 text-slate-500'} border-t py-4 px-6 text-center text-xs mt-auto transition-colors`}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="font-mono text-[11px] flex items-center gap-1.5 justify-center sm:justify-start">
+        <div className="max-w-[1880px] mx-auto px-2 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span className="font-mono text-[11px] sm:text-xs flex items-center gap-1.5 justify-center sm:justify-start">
             <Cloud className="w-3.5 h-3.5 text-blue-500" />
             <span>Base Oficial Conectada ao Cloud Firestore ({employees.length.toLocaleString('pt-BR')} colaboradores • {records.length.toLocaleString('pt-BR')} lançamentos)</span>
           </span>
-          <span className="text-[11px] font-sans">
+          <span className="text-[11px] sm:text-xs font-sans">
             COMARA • Sistema de Gestão de Banco de Horas SPTF & LGPD
           </span>
         </div>

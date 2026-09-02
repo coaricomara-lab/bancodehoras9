@@ -121,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className={`${
       isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
     } border-b sticky top-0 z-40 shadow-xs transition-colors`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <div className="flex items-center justify-between h-16 gap-3">
           
           {/* ========================================================= */}
@@ -135,10 +135,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ComaraLogo logoUrl={systemConfig?.logoUrl} size="sm" />
             <div>
               <div className="flex items-center space-x-2">
-                <span className={`font-bold text-sm tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <span className={`font-bold text-sm sm:text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   COMARA <span className="text-[#3B82F6]">SPTF</span>
                 </span>
-                <span className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${
                   isDark 
                     ? 'bg-[#243756] text-blue-400 border-[#335075]' 
                     : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -146,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   RH Cloud
                 </span>
               </div>
-              <p className={`text-[10px] font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+              <p className={`text-[11px] font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                 Sedes: <span className="text-[#3B82F6] font-bold">KO</span> • BE • MN
               </p>
             </div>
@@ -155,11 +155,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* ========================================================= */}
           {/* 2. CENTRO: ABAS PRINCIPAIS EM GRUPO LIMPO */}
           {/* ========================================================= */}
-          <nav className="hidden lg:flex items-center space-x-1 bg-transparent p-1 rounded-xl">
+          <nav className="hidden lg:flex items-center space-x-1.5 bg-transparent p-1 rounded-xl">
             {/* Aba 1: Dashboard */}
             <button
               onClick={() => onSelectTab('dashboard')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'dashboard' || activeTab === 'extrato'
                   ? isDark 
                     ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' 
@@ -169,14 +169,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-[#3B82F6]" />
+              <BarChart3 className="w-4 h-4 text-[#3B82F6]" />
               <span>Dashboard</span>
             </button>
 
             {/* Aba 2: Colaboradores */}
             <button
               onClick={() => onSelectTab('colaboradores')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'colaboradores'
                   ? isDark 
                     ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' 
@@ -186,9 +186,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Users className="w-3.5 h-3.5 text-blue-400" />
+              <Users className="w-4 h-4 text-blue-400" />
               <span>Colaboradores</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-normal ${
+              <span className={`text-[10px] xl:text-xs px-2 py-0.5 rounded-full font-mono font-bold ${
                 isDark ? 'bg-[#0F1B33] text-[#94A3B8]' : 'bg-slate-200 text-slate-700'
               }`}>
                 {totalEmployees}
@@ -198,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Aba 3: Insalubridade (Matriz Simples & Completa) */}
             <button
               onClick={() => onSelectTab('insalubridade')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'insalubridade'
                   ? isDark 
                     ? 'bg-[#243756] text-amber-400 border border-[#335075] shadow-xs' 
@@ -208,14 +208,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <HardHat className="w-3.5 h-3.5 text-amber-400" />
+              <HardHat className="w-4 h-4 text-amber-400" />
               <span>Insalubridade</span>
             </button>
 
             {/* Aba 4: Contracheques Digitais (Importação e Gestão) */}
             <button
               onClick={() => onSelectTab('contracheques')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'contracheques'
                   ? isDark 
                     ? 'bg-[#243756] text-emerald-400 border border-[#335075] shadow-xs' 
@@ -225,14 +225,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+              <Receipt className="w-4 h-4 text-emerald-400" />
               <span>Contracheques</span>
             </button>
 
             {/* Aba 5: Dispensas & Faltas */}
             <button
               onClick={() => onSelectTab('dispensas_faltas')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'dispensas_faltas'
                   ? isDark 
                     ? 'bg-[#243756] text-blue-400 border border-[#335075] shadow-xs' 
@@ -242,14 +242,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <FileCheck className="w-3.5 h-3.5 text-blue-400" />
+              <FileCheck className="w-4 h-4 text-blue-400" />
               <span>Dispensas & Faltas</span>
             </button>
 
-            {/* Aba 6: Manual */}
+            {/* Aba 6: Relatórios */}
+            <button
+              onClick={() => onSelectTab('relatorios')}
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'relatorios'
+                  ? isDark 
+                    ? 'bg-[#243756] text-purple-400 border border-[#335075] shadow-xs' 
+                    : 'bg-purple-50 text-purple-700 border border-purple-200 font-bold shadow-xs'
+                  : isDark 
+                    ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-purple-400" />
+              <span>Relatórios</span>
+            </button>
+
+            {/* Aba 7: Manual */}
             <button
               onClick={() => onSelectTab('arquitetura')}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === 'arquitetura'
                   ? isDark 
                     ? 'bg-[#243756] text-cyan-400 border border-[#335075] shadow-xs' 
@@ -259,7 +276,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+              <BookOpen className="w-4 h-4 text-cyan-400" />
               <span>Manual</span>
             </button>
           </nav>
@@ -952,6 +969,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           Insalubridade
+        </button>
+        <button
+          onClick={() => onSelectTab('dispensas_faltas')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+            activeTab === 'dispensas_faltas'
+              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-50'
+              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+          }`}
+        >
+          Dispensas
+        </button>
+        <button
+          onClick={() => onSelectTab('relatorios')}
+          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+            activeTab === 'relatorios'
+              ? isDark ? 'text-purple-400 font-bold bg-[#243756]' : 'text-purple-700 font-bold bg-purple-50'
+              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+          }`}
+        >
+          Relatórios
         </button>
         <button
           onClick={() => onSelectTab('arquitetura')}

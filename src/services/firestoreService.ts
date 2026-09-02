@@ -21,6 +21,7 @@ import { canteiroService } from './canteiroService';
 import { auditService, RegisterAuditParams, registrarLogAuditoria } from './auditService';
 import { localCache, CACHE_KEYS, CACHE_TTLS } from './localCache';
 import { storageService } from './storageService';
+import { maskCPF } from '../utils/lgpdUtils';
 export { registrarLogAuditoria, autoSeedDefaultAdminMaster };
 
 export const COLLECTIONS = {
@@ -76,8 +77,9 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     sede_origem: emp.sede_origem || emp.sede || 'KO',
     sede_atual: emp.sede_atual || emp.sede || 'KO',
     canteiroId: emp.canteiroId || '',
+    cpf: emp.cpf || '',
     cpfHash: emp.cpfHash || '',
-    cpfMascarado: emp.cpfMascarado || '',
+    cpfMascarado: emp.cpfMascarado || (emp.cpf ? maskCPF(emp.cpf) : ''),
     dataAdmissao: emp.dataAdmissao || '2026-01-01',
     status: emp.status || 'Ativo',
     grauInsalubridadeFixa: emp.grauInsalubridadeFixa || 'ISENTO',

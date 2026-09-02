@@ -413,10 +413,15 @@ export const DispensasFaltasManagement: React.FC<DispensasFaltasManagementProps>
     const docModelo = institutionSettings?.documentosModelo;
 
     // 1. Linha 1: Subordinação (busca nas configurações da organização)
-    const linha1Subordinacao = subordinacaoInst;
+    let linha1Subordinacao = 'Comando da Aeronáutica';
+    if (institutionSettings?.subordinacao) {
+      linha1Subordinacao = institutionSettings.subordinacao.includes('•')
+        ? institutionSettings.subordinacao.split('•')[0].trim()
+        : institutionSettings.subordinacao.trim();
+    }
 
     // 2. Linha 2: Nome da Instituição (busca nas configurações da organização)
-    const linha2Instituicao = nomeInst;
+    const linha2Instituicao = (institutionSettings?.nomeInstituicao || 'COMISSÃO DE AEROPORTOS DA REGIÃO AMAZÔNICA').toUpperCase();
 
     // 3. Linha 3: Nome do Sistema (busca nas configurações de modelo de documento da organização)
     let linha3Sistema = 'SISTEMA DE GESTÃO DO BANCO DE HORAS SPTF';
@@ -431,14 +436,13 @@ export const DispensasFaltasManagement: React.FC<DispensasFaltasManagementProps>
 
     // 4. Linha 4: Título Oficial do Relatório (Fixo conforme solicitado)
     const linha4Titulo = isDispensa
-      ? 'RELATÓRIO MENSAL  DE DISPENSA DE SPTF PARA DESCONTO EM BANCO DE HORAS'
+      ? 'RELATÓRIO MENSAL DE DISPENSA DE SPTF PARA DESCONTO EM BANCO DE HORAS'
       : 'RELATÓRIO MENSAL DE FALTAS E AUSÊNCIAS PARA DESCONTO EM BANCO DE HORAS / FOLHA';
 
     const reportTitle = linha4Titulo;
 
     // Cabeçalho e textos institucionais complementares
     const rodapeTexto = docModelo?.rodapeRelatorio || 'Documento gerado eletronicamente em conformidade com as Normas Internas e a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).';
-    const portariaTexto = docModelo?.portariaRegulamentar || '';
 
     // Detalhes da Sede / Canteiro Selecionado
     const sedeConfig = institutionSettings?.sedes?.find(
@@ -631,22 +635,21 @@ export const DispensasFaltasManagement: React.FC<DispensasFaltasManagementProps>
             justify-content: center;
           }
           .header-line-1 {
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 700;
-            color: #334155;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.25;
+            color: #1e293b;
+            letter-spacing: 0.3px;
+            line-height: 1.3;
             margin: 0;
           }
           .header-line-2 {
-            font-size: 12px;
+            font-size: 12.5px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            line-height: 1.25;
-            margin: 1px 0 0 0;
+            line-height: 1.3;
+            margin: 2px 0 0 0;
           }
           .header-line-3 {
             font-size: 11px;
@@ -654,23 +657,17 @@ export const DispensasFaltasManagement: React.FC<DispensasFaltasManagementProps>
             color: #1e3a8a;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            line-height: 1.25;
-            margin: 1px 0 0 0;
+            line-height: 1.3;
+            margin: 2px 0 0 0;
           }
           .header-line-4 {
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 900;
             color: #000000;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            line-height: 1.25;
-            margin: 3px 0 0 0;
-          }
-          .header-text .portaria {
-            font-size: 8.5px;
-            color: #64748b;
-            margin-top: 2px;
-            font-style: italic;
+            line-height: 1.3;
+            margin: 4px 0 0 0;
           }
           .meta-box {
             display: flex;
@@ -761,7 +758,6 @@ export const DispensasFaltasManagement: React.FC<DispensasFaltasManagementProps>
             <div class="header-line-2">${linha2Instituicao}</div>
             <div class="header-line-3">${linha3Sistema}</div>
             <div class="header-line-4">${linha4Titulo}</div>
-            ${portariaTexto ? `<div class="portaria">${portariaTexto}</div>` : ''}
           </div>
         </div>
 

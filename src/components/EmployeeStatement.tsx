@@ -360,12 +360,14 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
       {employeeToEdit && (
         <EditEmployeeModal
           employee={employeeToEdit}
+          employees={employees}
           constructionSites={constructionSites}
           theme={theme}
-          isSaving={isSavingEmployee}
-          error={employeeEditError}
           onClose={() => setEmployeeToEdit(null)}
-          onSave={handleSaveEmployeeEdit}
+          onSaveSuccess={(savedEmp) => {
+            onUpdateEmployees?.(employees.map((item) => (item.id === savedEmp.id ? savedEmp : item)));
+            setEmployeeToEdit(null);
+          }}
         />
       )}
 

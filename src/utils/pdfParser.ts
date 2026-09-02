@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { PaystubRecord, PaystubRubrica, Employee, Branch } from '../types';
+import { maskCPF, cleanCPF, isValidCPF } from './lgpdUtils';
 
 // Configure worker safely for browser environments (Vite)
 if (typeof window !== 'undefined') {
@@ -318,6 +319,36 @@ export function parseSingleContrachequeText(
       }
     }
 
+    // 2.1 Extração de CPF do Colaborador
+    if (!cpf) {
+      // a) Rótulo explícito "CPF: 123.456.789-01" ou "CPF 12345678901" ou "DOC: 123.***.***-01"
+      const explicitCpfMatch = line.match(/(?:CPF|CIC|DOC(?:UMENTO)?)\s*[:\s]*([0-9\.\-\*]{11,18})/i);
+      if (explicitCpfMatch) {
+        cpf = maskCPF(explicitCpfMatch[1]);
+      } else {
+        // b) Formato formatado completo: 123.456.789-01
+        const formattedCpfMatch = line.match(/\b(\d{3}\.\d{3}\.\d{3}-\d{2})\b/);
+        if (formattedCpfMatch) {
+          cpf = maskCPF(formattedCpfMatch[1]);
+        } else {
+          // c) Formato mascarado com asteriscos (123.***.***-01 ou ***.456.789-**)
+          const maskedCpfMatch = line.match(/\b(\d{3}\.\*{3}\.\*{3}-\d{2}|\*{3}\.\d{3}\.\d{3}-\*{2})\b/);
+          if (maskedCpfMatch) {
+            cpf = maskCPF(maskedCpfMatch[1]);
+          } else if (!line.includes('BANCO') && !line.includes('AGENCIA') && !line.includes('CONTA')) {
+            // d) Sequência de 11 a 14 dígitos (ex: "01/07/2026a31/07/2026 KO-DL 00394429009086" -> 00394429009)
+            const longDigitsMatch = line.match(/\b(\d{11,14})\b/);
+            if (longDigitsMatch) {
+              const candidate = longDigitsMatch[1].substring(0, 11);
+              if (isValidCPF(candidate)) {
+                cpf = maskCPF(candidate);
+              }
+            }
+          }
+        }
+      }
+    }
+
     // 3. Extração de Rubricas com Suporte a Todos os Formatos da COMARA
     // Exemplos reais do PDF:
     // "001 Salário Base 2.830,38"
@@ -597,7 +628,7 @@ export async function parseComaraPdfContracheques(
       existingEmployees.map(e => normalizeMatricula(e.matricula))
     );
 
-    const unregisteredMap = new Map<string, { matricula: string; nome: string; cargo: string; sede: string }>();
+    const unregisteredMap = new Map<string, { matricula: string; nome: string; cargo: string; sede: string; cpf?: string }>();
 
     for (const p of paystubs) {
       const normMat = normalizeMatricula(p.matricula);
@@ -606,7 +637,8 @@ export async function parseComaraPdfContracheques(
           matricula: normMat,
           nome: p.nome,
           cargo: p.cargo,
-          sede: p.sede || 'KO-DL'
+          sede: p.sede || 'KO-DL',
+          cpf: p.cpf
         });
       }
     }
@@ -748,7 +780,7 @@ export async function parseMultipleComaraPdfs(
     existingEmployees.map(e => normalizeMatricula(e.matricula))
   );
 
-  const unregisteredMap = new Map<string, { matricula: string; nome: string; cargo: string; sede: string }>();
+  const unregisteredMap = new Map<string, { matricula: string; nome: string; cargo: string; sede: string; cpf?: string }>();
 
   for (const p of paystubs) {
     const normMat = normalizeMatricula(p.matricula);
@@ -757,7 +789,8 @@ export async function parseMultipleComaraPdfs(
         matricula: normMat,
         nome: p.nome,
         cargo: p.cargo,
-        sede: p.sede || 'KO-DL'
+        sede: p.sede || 'KO-DL',
+        cpf: p.cpf
       });
     }
   }
@@ -778,7 +811,7 @@ export async function parseMultipleComaraPdfs(
  * Cria novos objetos Employee a partir dos servidores não cadastrados encontrados no PDF
  */
 export function buildEmployeesFromPaystubs(
-  unregistered: { matricula: string; nome: string; cargo: string; sede: string }[],
+  unregistered: { matricula: string; nome: string; cargo: string; sede: string; cpf?: string }[],
   dataAdmissaoDefault: string = '2026-07-01'
 ): Employee[] {
   return unregistered.map((u) => {
@@ -792,6 +825,8 @@ export function buildEmployeesFromPaystubs(
       sede: sedeMapeada,
       sede_origem: sedeMapeada,
       sede_atual: sedeMapeada,
+      cpf: u.cpf,
+      cpfMascarado: u.cpf ? maskCPF(u.cpf) : undefined,
       dataAdmissao: dataAdmissaoDefault,
       status: 'Ativo',
       saldoInicialHoras: 0,
@@ -820,7 +855,7 @@ export function getDemoComaraPaystubs(): PaystubRecord[] {
       mes: 7,
       dataInicio: '01/07/2026',
       dataFim: '31/07/2026',
-      cpf: '***.394.429-**',
+      cpf: '003.***.***-09',
       banco: '001 - BANCO DO BRASIL',
       agencia: '2345-6',
       conta: '13974-0',
@@ -856,7 +891,7 @@ export function getDemoComaraPaystubs(): PaystubRecord[] {
       mes: 7,
       dataInicio: '01/07/2026',
       dataFim: '31/07/2026',
-      cpf: '***.482.912-**',
+      cpf: '004.***.***-12',
       banco: '001 - BANCO DO BRASIL',
       agencia: '2345-6',
       conta: '98765-4',
