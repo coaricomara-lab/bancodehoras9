@@ -121,24 +121,24 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className={`${
       isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
     } border-b sticky top-0 z-40 shadow-xs transition-colors`}>
-      <div className="max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-        <div className="flex items-center justify-between h-16 gap-3">
+      <div className="max-w-[1880px] mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
+        <div className="flex items-center justify-between h-16 gap-1.5 sm:gap-3">
           
           {/* ========================================================= */}
           {/* 1. ESQUERDA: LOGOTIPO & MARCA COM CANTEIRO */}
           {/* ========================================================= */}
           <div 
-            className="flex items-center space-x-3 cursor-pointer shrink-0 group select-none" 
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0 group select-none" 
             onClick={() => onSelectTab('dashboard')}
             title="Ir para o Dashboard Principal"
           >
             <ComaraLogo logoUrl={systemConfig?.logoUrl} size="sm" />
             <div>
-              <div className="flex items-center space-x-2">
-                <span className={`font-bold text-sm sm:text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <div className="flex items-center space-x-1.5">
+                <span className={`font-bold text-xs sm:text-sm xl:text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   COMARA <span className="text-[#3B82F6]">SPTF</span>
                 </span>
-                <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${
+                <span className={`text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1 sm:px-1.5 py-0.2 rounded border ${
                   isDark 
                     ? 'bg-[#243756] text-blue-400 border-[#335075]' 
                     : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -146,20 +146,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   RH Cloud
                 </span>
               </div>
-              <p className={`text-[11px] font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+              <p className={`text-[10px] sm:text-[11px] font-mono font-medium hidden sm:block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                 Sedes: <span className="text-[#3B82F6] font-bold">KO</span> • BE • MN
               </p>
             </div>
           </div>
 
           {/* ========================================================= */}
-          {/* 2. CENTRO: ABAS PRINCIPAIS EM GRUPO LIMPO */}
+          {/* 2. CENTRO: ABAS PRINCIPAIS EM GRUPO LIMPO E ADAPTÁVEL     */}
           {/* ========================================================= */}
-          <nav className="hidden lg:flex items-center space-x-1.5 bg-transparent p-1 rounded-xl">
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 bg-transparent p-0.5 rounded-xl min-w-0 justify-center flex-1 overflow-x-auto no-scrollbar">
             {/* Aba 1: Dashboard */}
             <button
               onClick={() => onSelectTab('dashboard')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'dashboard' || activeTab === 'extrato'
                   ? isDark 
                     ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' 
@@ -168,15 +168,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Dashboard Executivo de Gestão"
             >
-              <BarChart3 className="w-4 h-4 text-[#3B82F6]" />
-              <span>Dashboard</span>
+              <BarChart3 className="w-4 h-4 text-[#3B82F6] shrink-0" />
+              <span className="hidden xl:inline">Dashboard</span>
+              <span className="xl:hidden">Dash</span>
             </button>
 
             {/* Aba 2: Colaboradores */}
             <button
               onClick={() => onSelectTab('colaboradores')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'colaboradores'
                   ? isDark 
                     ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' 
@@ -185,10 +187,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Gestão de Colaboradores e Efetivo"
             >
-              <Users className="w-4 h-4 text-blue-400" />
-              <span>Colaboradores</span>
-              <span className={`text-[10px] xl:text-xs px-2 py-0.5 rounded-full font-mono font-bold ${
+              <Users className="w-4 h-4 text-blue-400 shrink-0" />
+              <span className="hidden xl:inline">Colaboradores</span>
+              <span className="xl:hidden">Pessoas</span>
+              <span className={`text-[10px] xl:text-xs px-1.5 xl:px-2 py-0.2 xl:py-0.5 rounded-full font-mono font-bold ${
                 isDark ? 'bg-[#0F1B33] text-[#94A3B8]' : 'bg-slate-200 text-slate-700'
               }`}>
                 {totalEmployees}
@@ -198,7 +202,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Aba 3: Insalubridade (Matriz Simples & Completa) */}
             <button
               onClick={() => onSelectTab('insalubridade')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'insalubridade'
                   ? isDark 
                     ? 'bg-[#243756] text-amber-400 border border-[#335075] shadow-xs' 
@@ -207,15 +211,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Gestão e Apontamentos de Insalubridade em Campo"
             >
-              <HardHat className="w-4 h-4 text-amber-400" />
-              <span>Insalubridade</span>
+              <HardHat className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="hidden 2xl:inline">Insalubridade</span>
+              <span className="2xl:hidden">Insalubr.</span>
             </button>
 
             {/* Aba 4: Contracheques Digitais (Importação e Gestão) */}
             <button
               onClick={() => onSelectTab('contracheques')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'contracheques'
                   ? isDark 
                     ? 'bg-[#243756] text-emerald-400 border border-[#335075] shadow-xs' 
@@ -224,15 +230,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Contracheques e Fichas Financeiras Digitais"
             >
-              <Receipt className="w-4 h-4 text-emerald-400" />
-              <span>Contracheques</span>
+              <Receipt className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="hidden 2xl:inline">Contracheques</span>
+              <span className="2xl:hidden">Folha</span>
             </button>
 
             {/* Aba 5: Dispensas & Faltas */}
             <button
               onClick={() => onSelectTab('dispensas_faltas')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'dispensas_faltas'
                   ? isDark 
                     ? 'bg-[#243756] text-blue-400 border border-[#335075] shadow-xs' 
@@ -241,15 +249,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Dispensas de SPTF e Faltas"
             >
-              <FileCheck className="w-4 h-4 text-blue-400" />
-              <span>Dispensas & Faltas</span>
+              <FileCheck className="w-4 h-4 text-blue-400 shrink-0" />
+              <span className="hidden 2xl:inline">Dispensas & Faltas</span>
+              <span className="2xl:hidden">Dispensas</span>
             </button>
 
             {/* Aba 6: Relatórios */}
             <button
               onClick={() => onSelectTab('relatorios')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'relatorios'
                   ? isDark 
                     ? 'bg-[#243756] text-purple-400 border border-[#335075] shadow-xs' 
@@ -258,15 +268,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Gerador de Relatórios Executivos Consolidados"
             >
-              <FileText className="w-4 h-4 text-purple-400" />
-              <span>Relatórios</span>
+              <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+              <span className="hidden xl:inline">Relatórios</span>
+              <span className="xl:hidden">Relat.</span>
             </button>
 
             {/* Aba 7: Manual */}
             <button
               onClick={() => onSelectTab('arquitetura')}
-              className={`px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'arquitetura'
                   ? isDark 
                     ? 'bg-[#243756] text-cyan-400 border border-[#335075] shadow-xs' 
@@ -275,8 +287,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
+              title="Manual Operacional e Normativas"
             >
-              <BookOpen className="w-4 h-4 text-cyan-400" />
+              <BookOpen className="w-4 h-4 text-cyan-400 shrink-0" />
               <span>Manual</span>
             </button>
           </nav>
@@ -284,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* ========================================================= */}
           {/* 3. DIREITA: AÇÕES RÁPIDAS, ENGRENAGEM, PERFIL & LOGOFF */}
           {/* ========================================================= */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0 ml-auto">
             
             {/* BOTÃO INSTALAR APLICATIVO (PWA) */}
             <PWAInstallButton variant="navbar" theme={theme} />
@@ -936,66 +949,81 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Navegação Mobile Compacta */}
-      <div className={`md:hidden flex items-center justify-around border-t ${
+      {/* Navegação Mobile & Tablet Compacta (Visível abaixo de lg / 1024px) */}
+      <div className={`lg:hidden flex items-center justify-start sm:justify-center border-t ${
         isDark ? 'border-[#243756] bg-[#0F1B33]' : 'border-slate-200 bg-slate-50'
-      } px-2 py-1.5 text-xs overflow-x-auto`}>
+      } px-2 py-1.5 text-xs overflow-x-auto no-scrollbar gap-1`}>
         <button
           onClick={() => onSelectTab('dashboard')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'dashboard' || activeTab === 'extrato'
-              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Dashboard
         </button>
         <button
           onClick={() => onSelectTab('colaboradores')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium flex items-center gap-1 ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors flex items-center gap-1 ${
             activeTab === 'colaboradores'
-              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <span>Pessoas</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+            isDark ? 'bg-[#0B1426] text-[#94A3B8]' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {totalEmployees}
+          </span>
         </button>
         <button
           onClick={() => onSelectTab('insalubridade')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'insalubridade'
-              ? isDark ? 'text-amber-400 font-bold bg-[#243756]' : 'text-amber-700 font-bold bg-amber-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-amber-400 font-bold bg-[#243756]' : 'text-amber-700 font-bold bg-amber-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Insalubridade
         </button>
         <button
+          onClick={() => onSelectTab('contracheques')}
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
+            activeTab === 'contracheques'
+              ? isDark ? 'text-emerald-400 font-bold bg-[#243756]' : 'text-emerald-700 font-bold bg-emerald-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Contracheques
+        </button>
+        <button
           onClick={() => onSelectTab('dispensas_faltas')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'dispensas_faltas'
-              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-blue-400 font-bold bg-[#243756]' : 'text-blue-700 font-bold bg-blue-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Dispensas
         </button>
         <button
           onClick={() => onSelectTab('relatorios')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'relatorios'
-              ? isDark ? 'text-purple-400 font-bold bg-[#243756]' : 'text-purple-700 font-bold bg-purple-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-purple-400 font-bold bg-[#243756]' : 'text-purple-700 font-bold bg-purple-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Relatórios
         </button>
         <button
           onClick={() => onSelectTab('arquitetura')}
-          className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium ${
+          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'arquitetura'
-              ? isDark ? 'text-cyan-400 font-bold bg-[#243756]' : 'text-cyan-700 font-bold bg-cyan-50'
-              : isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+              ? isDark ? 'text-cyan-400 font-bold bg-[#243756]' : 'text-cyan-700 font-bold bg-cyan-100'
+              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Manual

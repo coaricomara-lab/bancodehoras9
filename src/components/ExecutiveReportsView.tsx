@@ -691,7 +691,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0 justify-start sm:justify-end">
           {/* Botão de Emissão de Dispensa de SPTF */}
           {onOpenSptfDispensa && (
             <IconButton
@@ -740,19 +740,19 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* 2. PAINEL DE FILTROS & SELEÇÃO DE PERÍODO & SUB-MODOS         */}
       {/* ------------------------------------------------------------- */}
-      <div className={`p-5 rounded-2xl border space-y-4 print:hidden ${
+      <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 print:hidden ${
         isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         {/* Tipo de Relatório Toggle */}
-        <div className="flex items-center justify-between gap-3 border-b pb-4 flex-wrap">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b pb-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs font-bold mr-2 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-              TIPO DE RELATÓRIO:
+            <span className={`text-xs font-bold mr-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+              RELATÓRIO:
             </span>
             
             <button
               onClick={() => setReportType('BANCO_HORAS')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                 reportType === 'BANCO_HORAS'
                   ? isDark 
                     ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30 shadow-xs' 
@@ -762,13 +762,14 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
                     : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Clock className="w-4 h-4" />
-              <span>1. Banco de Horas (Saldo Anterior, Acumulado, Saldo Final)</span>
+              <Clock className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">1. Banco de Horas (Saldos & Acumulado)</span>
+              <span className="sm:hidden">1. Banco de Horas</span>
             </button>
 
             <button
               onClick={() => setReportType('INSALUBRIDADE')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] flex items-center gap-2 cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.98] flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                 reportType === 'INSALUBRIDADE'
                   ? isDark 
                     ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-xs' 
@@ -778,14 +779,15 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
                     : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <ShieldAlert className="w-4 h-4" />
-              <span>2. Insalubridade & Serviços em Campo</span>
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">2. Insalubridade & Serviços em Campo</span>
+              <span className="sm:hidden">2. Insalubridade</span>
             </button>
           </div>
 
           {/* Seletor de Sub-Modo de Insalubridade: MODO SIMPLES vs MODO AVANÇADO */}
           {reportType === 'INSALUBRIDADE' && (
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-black/40 border border-black/5 dark:border-white/5">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/10 dark:bg-black/40 border border-black/5 dark:border-white/5 flex-wrap">
               <button
                 onClick={() => setInsalubritySubMode('SIMPLES')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-[0.98] flex items-center gap-1.5 cursor-pointer ${
@@ -795,8 +797,9 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
                 }`}
                 title="Relatório focado nas atividades e serviços de campo executados (sem porcentagens)"
               >
-                <Table className="w-3.5 h-3.5" />
-                <span>Modo Simples (O que a pessoa fez)</span>
+                <Table className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Modo Simples (Atividades)</span>
+                <span className="sm:hidden">Simples</span>
               </button>
 
               <button
@@ -808,8 +811,9 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
                 }`}
                 title="Relatório analítico de insalubridade com enquadramento NR-15 (10%, 20%, 40%) e adicional fixo"
               >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Modo Avançado (NR-15 % e Horas)</span>
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Modo Avançado (NR-15 %)</span>
+                <span className="sm:hidden">Avançado</span>
               </button>
             </div>
           )}

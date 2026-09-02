@@ -636,7 +636,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
         </div>
 
         {/* Ações Rápidas do Cabeçalho */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Botão + Lançamento em Lote */}
           <IconButton
             id="btn-insalubridade-lancamento-lote"
@@ -666,7 +666,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
           <div className="relative">
             <button
               onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-              className={`px-4 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                 isDark
                   ? 'border-[#335075] hover:bg-[#243756] text-[#E2E8F0] bg-[#0F1B33]'
                   : 'border-slate-200 hover:bg-slate-100 text-slate-700 bg-slate-50'
@@ -922,41 +922,44 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
             />
 
             {/* SELETORES DE MODO DE PERÍODO */}
-            <div className={`flex items-center p-1 rounded-xl border ${
+            <div className={`flex items-center p-1 rounded-xl border flex-wrap ${
               isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-100 border-slate-200'
             }`}>
               <button
                 type="button"
                 onClick={() => handleSelectQuinzena('Q1')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'Q1'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                1ª Quinzena (1-15)
+                <span className="hidden sm:inline">1ª Quinzena (1-15)</span>
+                <span className="sm:hidden">1ª Q (1-15)</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleSelectQuinzena('Q2')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'Q2'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                2ª Quinzena (16-{daysInMonth})
+                <span className="hidden sm:inline">2ª Quinzena (16-{daysInMonth})</span>
+                <span className="sm:hidden">2ª Q (16-{daysInMonth})</span>
               </button>
               <button
                 type="button"
                 onClick={handleSelectFullMonth}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all active:scale-[0.98] cursor-pointer ${
                   periodViewMode === 'FULL'
                     ? 'bg-amber-600 text-white shadow-xs font-black'
                     : isDark ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Mês Completo (1-{daysInMonth})
+                <span className="hidden sm:inline">Mês Completo (1-{daysInMonth})</span>
+                <span className="sm:hidden">Mês Inteiro</span>
               </button>
             </div>
 
