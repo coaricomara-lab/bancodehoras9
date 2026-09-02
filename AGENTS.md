@@ -6,6 +6,8 @@
 - `GEMINI_API_KEY` appears only as an optional template entry and is not required by the current source or at boot.
 - Verify locally with `curl -f http://localhost:3000/` and externally with a non-localhost Host header.
 - Type-check with `docker compose -f docker-compose.base44.yml exec -T web npm run lint`.
+- Máquina de Competências (Fase 1–4): rodar as suítes com `npx tsx src/services/competenciaEngine.test.ts` (44 testes), `npx tsx src/services/competenciaService.test.ts` (16) e `npx tsx src/services/competenciaBlindagem.test.ts` (33) dentro do serviço `web`.
+- Fase 4 (blindagem): `firestore.rules` bloqueia create/update/delete de `lancamentos` em competência FECHADO (bypass Super Admin); todo lançamento persiste o campo `competencia` (YYYY-MM) derivado de `dataRegistro`; `fecharCompetencia` exige C-1 FECHADO, apura delta de refechamento e dispara cascata automática nas competências posteriores. As regras alteradas precisam ser publicadas com `npm run deploy:rules` (requer Firebase CLI autenticado — fora do sandbox).
 
 ## Design System — Paleta Institucional Aeronáutica
 
