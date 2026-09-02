@@ -31,7 +31,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
   const [copiedDomain, setCopiedDomain] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [selectedMasterEmail, setSelectedMasterEmail] = useState('comarafab@gmail.com');
+  const [selectedMasterEmail, setSelectedMasterEmail] = useState('coari.comara@gmail.com');
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
@@ -89,7 +89,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       const { user, processed } = await authService.signInWithGoogle();
       handleApplyLoginSuccess(user, processed);
     } catch (error: any) {
-      console.error('Erro no Google Sign-In Popup:', error);
+      console.warn('Aviso no Google Sign-In Popup:', error);
       const code = error?.code || '';
       if (code === 'auth/popup-closed-by-user') {
         setErrorMessage('A janela de autenticação foi fechada antes de concluir o login.');
@@ -111,7 +111,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       const { user, processed } = await authService.signInWithDevMaster(selectedMasterEmail);
       handleApplyLoginSuccess(user, processed);
     } catch (err: any) {
-      console.error('Erro no login mestre:', err);
+      console.warn('Aviso no login mestre:', err);
       setErrorMessage(err?.message || 'Falha ao processar login mestre.');
     } finally {
       setIsLoading(false);

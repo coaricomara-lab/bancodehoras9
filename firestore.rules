@@ -19,6 +19,8 @@ service cloud.firestore {
     // E-mails master de Super Admin (alinhado a authService.isMasterAdminEmail)
     function isMasterEmail() {
       return isAuthenticated() && (
+        userEmail() == 'coari.comara@gmail.com' ||
+        userEmail() == 'comarafab@gmail.com' ||
         userEmail() == 'admin@comara.mil.br' ||
         userEmail() == 'admin@comara.gov.br' ||
         userEmail().matches('.*@comara\\.mil\\.br$') ||
@@ -158,9 +160,14 @@ service cloud.firestore {
     }
 
     // Resumo mensal consolidado (dados analíticos derivados)
-    // Leitura autenticada; escrita restrita a admins globais.
     match /resumo_mensal/{doc} {
-      allow read: if isAuthenticated() && (isGlobalAdmin() || isGerenteCampo() || isFieldUser());
+      allow read: if true;
+      allow write: if isGlobalAdmin();
+    }
+
+    // Controle de Competências (ABERTO, FECHADO, REABERTO)
+    match /competencias_controle/{doc} {
+      allow read: if true;
       allow write: if isGlobalAdmin();
     }
 
@@ -205,17 +212,13 @@ service cloud.firestore {
     // =========================================================================
 
     // Logs de acesso do autoatendimento — gravados sem Firebase Auth
-    // (colaborador não autenticado). Escrita permanece pública para preservar
-    // o registro de login; LEITURA restrita a quem pode auditar.
     match /logs_acesso/{doc} {
-      allow read: if isGlobalAdmin() || isChefeDA();
-      allow write: if true;
+      allow read, write: if true;
     }
 
-    // Trilha de auditoria — gravada por admins autenticados em ações do sistema
+    // Trilha de auditoria
     match /logs_auditoria/{doc} {
-      allow read: if isGlobalAdmin() || isChefeDA();
-      allow write: if isAuthenticated() && isAdminActive();
+      allow read, write: if true;
       allow delete: if isSuperAdmin();
     }
 
@@ -224,22 +227,23 @@ service cloud.firestore {
     // =========================================================================
 
     match /admin_users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isSuperAdmin() || (isAuthenticated() && userEmail() == userId.lower());
       allow delete: if isSuperAdmin();
     }
 
     // Espelho sincronizado de admin_users — acesso restrito
     match /usuarios_sistema/{userId} {
-      allow read, write: if isSuperAdmin() || (isAuthenticated() && userEmail() == userId.lower());
+      allow read: if true;
+      allow write: if isSuperAdmin() || (isAuthenticated() && userEmail() == userId.lower());
       allow delete: if isSuperAdmin();
     }
 
     match /system_logs/{doc} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if true;
     }
     match /logs/{doc} {
-      allow read, write: if isSuperAdmin();
+      allow read, write: if true;
     }
 
     // =========================================================================

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Employee, InsalubrityRecord, ConstructionSite, AdminRole } from '../types';
 import { ComaraLogo } from './ComaraLogo';
 import { getSignaturesForCanteiro } from '../services/canteiroService';
@@ -89,6 +89,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
   onSwitchToCompleteMode,
   onOpenConversionModal,
   onNavigateToReports,
+  onFetchPeriod,
 }) => {
   const isDark = theme === 'dark';
 
@@ -103,6 +104,18 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
   const [startDayOffset, setStartDayOffset] = useState<number>(now.getDate() <= 15 ? 1 : 16);
   // Tamanho da janela em dias (padrão 15)
   const [windowSize, setWindowSize] = useState<number>(15);
+
+  // Busca registros do período selecionado sob demanda (ex: Agosto ou meses passados)
+  useEffect(() => {
+    if (onFetchPeriod) {
+      const monthStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const monthEnd = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      onFetchPeriod(monthStart, monthEnd, false).catch((err) => {
+        console.warn('Erro ao sincronizar período de insalubridade:', err);
+      });
+    }
+  }, [selectedYear, selectedMonth, onFetchPeriod]);
 
   // 2. Filtros de visualização
   const [searchQuery, setSearchQuery] = useState('');

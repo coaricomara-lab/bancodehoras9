@@ -32,7 +32,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
   const [copiedDomain, setCopiedDomain] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedMasterEmail, setSelectedMasterEmail] = useState<string>('comarafab@gmail.com');
+  const [selectedMasterEmail, setSelectedMasterEmail] = useState<string>('coari.comara@gmail.com');
 
   if (!isOpen) return null;
 
@@ -68,13 +68,30 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         }
       }
     } catch (err: any) {
-      console.error('Erro no login Google:', err);
+      console.warn('Aviso no login Google:', err);
       const errText = err?.message || 'Falha ao autenticar com Google Workspace.';
       setErrorMessage(errText);
       if (err?.code === 'auth/unauthorized-domain' || errText.includes('unauthorized-domain')) {
         setIsUnauthorizedDomain(true);
       }
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleRedirectSubmit = async () => {
+    setErrorMessage(null);
+    setIsUnauthorizedDomain(false);
+    setIsLoading(true);
+    try {
+      await authService.signInWithGoogleRedirect();
+    } catch (err: any) {
+      console.warn('Aviso no redirecionamento Google:', err);
+      const errText = err?.message || 'Falha ao redirecionar para autenticação Google.';
+      setErrorMessage(errText);
+      if (err?.code === 'auth/unauthorized-domain' || errText.includes('unauthorized-domain')) {
+        setIsUnauthorizedDomain(true);
+      }
       setIsLoading(false);
     }
   };
@@ -123,7 +140,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         }
       }
     } catch (err: any) {
-      console.error('Erro no login de contingência:', err);
+      console.warn('Aviso no login de contingência:', err);
       setErrorMessage(err?.message || 'Erro ao processar login mestre.');
     } finally {
       setIsLoading(false);
@@ -208,12 +225,12 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         )}
 
         {/* Google Workspace Sign-In */}
-        <div>
+        <div className="space-y-2">
           <button
             type="button"
             onClick={handleGoogleSubmit}
             disabled={isLoading}
-            className={`w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold border transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer shadow-md ${
+            className={`w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold border transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer shadow-md ${
               isDark 
                 ? 'bg-[#243756] hover:bg-[#335075] border-[#335075] text-white' 
                 : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
@@ -225,7 +242,22 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>{isLoading ? 'Autenticando...' : 'Entrar com Google Workspace'}</span>
+            <span>{isLoading ? 'Autenticando...' : 'Entrar com Google Workspace (Popup)'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleRedirectSubmit}
+            disabled={isLoading}
+            className={`w-full py-2 px-3 rounded-xl text-[11px] font-semibold border transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${
+              isDark 
+                ? 'bg-[#16243D] hover:bg-[#243756] border-[#243756] text-blue-300' 
+                : 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-800'
+            } disabled:opacity-50`}
+            title="Utilize o redirecionamento caso o popup seja bloqueado pelo navegador ou políticas COOP"
+          >
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            <span>Entrar via Redirecionamento (Evita bloqueio de popup/COOP)</span>
           </button>
         </div>
 

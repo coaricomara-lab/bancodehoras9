@@ -31,6 +31,7 @@ export const COLLECTIONS = {
   ADMIN_USERS: 'admin_users',
   USUARIOS_SISTEMA: 'usuarios_sistema',
   RESUMO_MENSAL: 'resumo_mensal',
+  COMPETENCIAS_CONTROLE: 'competencias_controle',
   COLABORADORES_AUTH: 'colaboradores_auth',
   SYSTEM_LOGS: 'system_logs',
   LOGS_AUDITORIA: 'logs_auditoria',
@@ -200,10 +201,10 @@ export const firestoreService = {
   ): Unsubscribe {
     const path = COLLECTIONS.COLABORADORES;
     try {
-      let q = query(collection(db, path), orderBy('nome', 'asc'), limit(200));
+      let q = query(collection(db, path), orderBy('nome', 'asc'), limit(1000));
       if (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') {
         // Query com filtro no Firestore quando aplicável
-        q = query(collection(db, path), where('sede', '==', canteiroId), orderBy('nome', 'asc'), limit(200));
+        q = query(collection(db, path), where('sede', '==', canteiroId), orderBy('nome', 'asc'), limit(1000));
       }
       return onSnapshot(
         q,
@@ -280,14 +281,10 @@ export const firestoreService = {
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
       let q;
       if (normalizedCanteiro) {
-        q = query(collection(db, path), where('employeeSede', '==', normalizedCanteiro), limit(200));
+        q = query(collection(db, path), where('employeeSede', '==', normalizedCanteiro), limit(2000));
       } else {
-        // 1.2: Global users — filter by current month/year to reduce Firestore reads
-        const now = new Date();
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-        q = query(collection(db, path), where('dataRegistro', '>=', monthStart), where('dataRegistro', '<=', monthEnd), limit(200));
+        // Carrega registros sem restrição artificial de mês único para permitir visualização de meses anteriores (ex: Agosto)
+        q = query(collection(db, path), limit(2000));
       }
 
       return onSnapshot(
@@ -979,28 +976,36 @@ export const firestoreService = {
 
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
 
-      // Se nenhum intervalo de data for especificado, calcula a janela do mês corrente para proteção de cota
-      if (!startDate || !endDate) {
-        const now = new Date();
-        startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      }
-
       let q;
-      if (normalizedCanteiro) {
-        q = query(
-          collection(db, path),
-          where('sede', '==', normalizedCanteiro),
-          where('dataEvento', '>=', startDate),
-          where('dataEvento', '<=', endDate)
-        );
+      if (startDate && endDate) {
+        if (normalizedCanteiro) {
+          q = query(
+            collection(db, path),
+            where('sede', '==', normalizedCanteiro),
+            where('dataEvento', '>=', startDate),
+            where('dataEvento', '<=', endDate)
+          );
+        } else {
+          q = query(
+            collection(db, path),
+            where('dataEvento', '>=', startDate),
+            where('dataEvento', '<=', endDate)
+          );
+        }
       } else {
-        q = query(
-          collection(db, path),
-          where('dataEvento', '>=', startDate),
-          where('dataEvento', '<=', endDate)
-        );
+        // Se nenhum intervalo for informado, carrega registros globais (incluindo meses passados como Agosto)
+        if (normalizedCanteiro) {
+          q = query(
+            collection(db, path),
+            where('sede', '==', normalizedCanteiro),
+            limit(2000)
+          );
+        } else {
+          q = query(
+            collection(db, path),
+            limit(2000)
+          );
+        }
       }
 
       return onSnapshot(
@@ -1037,8 +1042,11 @@ export const firestoreService = {
               });
             });
 
+            // Ordena os registros do mais recente para o mais antigo
+            list.sort((a, b) => (b.dataEvento || '').localeCompare(a.dataEvento || ''));
+
             // Atualiza cache em memória para a chave deste período
-            const cacheKey = `insalubridade_${normalizedCanteiro || 'ALL'}_${startDate}_${endDate}`;
+            const cacheKey = `insalubridade_${normalizedCanteiro || 'ALL'}_${startDate || 'ALL'}_${endDate || 'ALL'}`;
             localCache.setCache(cacheKey, list, CACHE_TTLS.MEDIUM);
 
             onSuccess(list);
@@ -1644,8 +1652,8 @@ export const firestoreService = {
     try {
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
       const q = normalizedCanteiro
-        ? query(collection(db, path), where('secaoCanteiro', '==', `DECO-${normalizedCanteiro}`), limit(200))
-        : query(collection(db, path), limit(200));
+        ? query(collection(db, path), where('secaoCanteiro', '==', `DECO-${normalizedCanteiro}`), limit(1000))
+        : query(collection(db, path), limit(1000));
 
       return onSnapshot(
         q,

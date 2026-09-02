@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Employee, TimeRecord, InsalubrityRecord, Branch, SystemConfig, AdminRole, ConstructionSite } from '../types';
 import { ComaraLogo } from './ComaraLogo';
 import { InsalubrityConversionModal } from './InsalubrityConversionModal';
@@ -95,6 +95,15 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
   
   // Modal de Conversão Simples -> Avançado
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
+
+  // Sincroniza registros de insalubridade do período selecionado sob demanda
+  useEffect(() => {
+    if (onFetchInsalubrityPeriod && startDate && endDate) {
+      onFetchInsalubrityPeriod(startDate, endDate, false).catch((err) => {
+        console.warn('Erro ao sincronizar insalubridade para relatório:', err);
+      });
+    }
+  }, [startDate, endDate, onFetchInsalubrityPeriod]);
 
   const isAdvancedUser = userRole === 'SUPER_ADMIN' || userRole === 'GESTOR_RH' || userRole === 'GERENTE_CAMPO' || userRole === 'ROLE_GERENTE';
 

@@ -45,6 +45,9 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { rbacService } from './services/rbacService';
 import { registrarLogAuditoria } from './services/auditService';
+import { competenciaService, CompetenciaControle } from './services/competenciaService';
+import { CompetenciaStatusBar } from './components/CompetenciaStatusBar';
+import { CompetenciaManagementModal } from './components/CompetenciaManagementModal';
 import { useInactivityTimeout } from './hooks/useInactivityTimeout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CheckCircle2, AlertCircle, Cloud, RefreshCw, X, Database, ShieldAlert, BookOpen, ArrowLeft, LogOut, Lock } from 'lucide-react';
@@ -150,17 +153,40 @@ export default function App() {
   }, []);
 
   // -------------------------------------------------------------
+  // Competência e Fechamento Contábil
+  // -------------------------------------------------------------
+  const [currentCompetencia, setCurrentCompetencia] = useState<string>(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
+  const [competenciaControle, setCompetenciaControle] = useState<CompetenciaControle | null>(null);
+  const [isCompetenciaModalOpen, setIsCompetenciaModalOpen] = useState(false);
+
+  const carregarControleCompetencia = useCallback(async (comp: string) => {
+    try {
+      const ctrl = await competenciaService.obterCompetenciaControle(comp);
+      setCompetenciaControle(ctrl);
+    } catch (err) {
+      console.warn('Erro ao obter controle de competência:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarControleCompetencia(currentCompetencia);
+  }, [currentCompetencia, carregarControleCompetencia]);
+
+  // -------------------------------------------------------------
   // 1. Real-Time Cloud Firestore Sync com Fallback Robusto & Tenancy
   // -------------------------------------------------------------
+  const currentUserCanteiro = currentUser ? rbacService.getUserCanteiroId(currentUser) : undefined;
+  const isGlobalUser = rbacService.isGlobalRole(userRole);
+  const activeCanteiro = !isGlobalUser ? currentUserCanteiro : undefined;
+
   const initFirestoreSubscriptions = useCallback(() => {
     setIsSyncing(true);
     testFirestoreConnection();
-
-    // Determine strict active canteiro for non-global users
-    const isGlobal = rbacService.isGlobalRole(userRole);
-    const activeCanteiro = (!isGlobal && currentUser)
-      ? rbacService.getUserCanteiroId(currentUser)
-      : undefined;
 
     // Subscribe to Employees in Firestore
     const unsubEmployees = firestoreService.subscribeEmployees(
@@ -183,11 +209,7 @@ export default function App() {
         } else if (isPermissionError(err)) {
           setFirestoreErrorNotice('Erro de permissão no banco de dados. Verifique a autenticação.');
         }
-        const local = storageService.getEmployees();
-        setEmployees(local);
-        if (local.length > 0 && !selectedMatriculaRef.current) {
-          setSelectedMatricula(local[0].matricula);
-        }
+        setEmployees(prev => (prev.length > 0 ? prev : storageService.getEmployees()));
         setIsSyncing(false);
       },
       activeCanteiro
@@ -210,8 +232,7 @@ export default function App() {
         } else if (isPermissionError(err)) {
           setFirestoreErrorNotice('Erro de permissão no banco de dados. Verifique a autenticação.');
         }
-        const local = storageService.getTimeRecords();
-        setRecords(local);
+        setRecords(prev => (prev.length > 0 ? prev : storageService.getTimeRecords()));
       },
       activeCanteiro
     );
@@ -227,8 +248,7 @@ export default function App() {
       },
       (err) => {
         console.warn('Fallback local para administradores:', err);
-        const local = storageService.getAdmins();
-        setAdminUsers(local);
+        setAdminUsers(prev => (prev.length > 0 ? prev : storageService.getAdmins()));
       }
     );
 
@@ -242,8 +262,7 @@ export default function App() {
       },
       (err) => {
         console.warn('Fallback local para insalubridade:', err);
-        const local = storageService.getInsalubrityRecords();
-        setInsalubrityRecords(local);
+        setInsalubrityRecords(prev => (prev.length > 0 ? prev : storageService.getInsalubrityRecords()));
       },
       activeCanteiro
     );
@@ -277,8 +296,7 @@ export default function App() {
       },
       (err) => {
         console.warn('Fallback para contracheques:', err);
-        const local = storageService.getPaystubs();
-        setPaystubs(local);
+        setPaystubs(prev => (prev.length > 0 ? prev : storageService.getPaystubs()));
       },
       activeCanteiro
     );
@@ -293,8 +311,7 @@ export default function App() {
       },
       (err) => {
         console.warn('Fallback local para dispensas SPTF:', err);
-        const local = storageService.getDispensasSptf();
-        setDispensasSptf(local);
+        setDispensasSptf(prev => (prev.length > 0 ? prev : storageService.getDispensasSptf()));
       },
       activeCanteiro
     );
@@ -331,12 +348,12 @@ export default function App() {
         console.warn('Erro ao cancelar listener de administradores:', e);
       }
     };
-  }, [userRole, currentUser]);
+  }, [userRole, activeCanteiro]);
 
   useEffect(() => {
     // 1.4: Guard against duplicate listeners — only subscribe when user is verified
     if (isSubscribedRef.current) return;
-    if (isAuthLoading || !auth.currentUser) return;
+    if (isAuthLoading) return;
     if (!currentUser || !userRole) return;
     isSubscribedRef.current = true;
     const cleanup = initFirestoreSubscriptions();
@@ -344,7 +361,7 @@ export default function App() {
       isSubscribedRef.current = false;
       if (typeof cleanup === 'function') cleanup();
     };
-  }, [initFirestoreSubscriptions, currentUser, userRole, isAuthLoading]);
+  }, [initFirestoreSubscriptions, currentUser?.email, userRole, isAuthLoading]);
 
 
   // -------------------------------------------------------------
@@ -406,7 +423,12 @@ export default function App() {
             photoURL: user.photoURL || processed.admin.foto,
           };
           setPendingAccessUser(null);
-          setCurrentUser(appUser);
+          setCurrentUser(prev => {
+            if (prev && prev.uid === appUser.uid && prev.email === appUser.email && prev.role === appUser.role) {
+              return prev;
+            }
+            return appUser;
+          });
           setUserRole(appUser.role);
           setUserMode(appUser.role === 'AUDITOR' ? 'COLABORADOR' : 'ADMIN');
           authService.saveCurrentSession({
@@ -422,7 +444,35 @@ export default function App() {
           setIsVerifyingPermissions(false);
         }
       } else {
-        // Sem sessão autenticada válida no Firebase Auth: encerra sessão e mantém tela de login
+        // Sem sessão autenticada ativa no Firebase Auth:
+        // Verifica se há uma sessão institucional mestre salva no storage local
+        const savedSession = authService.getCurrentSession();
+        if (savedSession && isMasterAdminEmail(savedSession.email)) {
+          const appUser: AppUser = {
+            uid: `session-${savedSession.email}`,
+            email: savedSession.email,
+            nome: savedSession.nome,
+            displayName: savedSession.nome,
+            role: savedSession.role,
+            cargo: savedSession.cargo,
+            sede: savedSession.sede || 'TODAS',
+            canteiroCodigo: savedSession.canteiroCodigo || 'KO',
+            canteiroSede: savedSession.canteiroSede || 'TODAS',
+            loginTime: savedSession.loginTime || new Date().toISOString(),
+          };
+          setPendingAccessUser(null);
+          setCurrentUser(prev => {
+            if (prev && prev.email === appUser.email && prev.role === appUser.role) {
+              return prev;
+            }
+            return appUser;
+          });
+          setUserRole(appUser.role);
+          setUserMode(appUser.role === 'AUDITOR' ? 'COLABORADOR' : 'ADMIN');
+          setIsVerifyingPermissions(false);
+          return;
+        }
+
         setIsVerifyingPermissions(false);
         authService.clearSession();
         setCurrentUser(null);
@@ -433,7 +483,7 @@ export default function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [adminUsers, showToast]);
+  }, []);
 
   const refreshAdminAccessStatus = useCallback(async (email?: string, userOverride?: FirebaseUser | null) => {
     const userToProcess = userOverride || auth.currentUser;
@@ -661,7 +711,7 @@ export default function App() {
       } else {
         errorMsg = getFirebaseAuthErrorMessage(code, errorMsg);
       }
-      console.error('Erro na autenticação Google Popup:', err);
+      console.warn('Aviso na autenticação Google Popup:', err);
       showToast(errorMsg, 'error');
       return { success: false, error: errorMsg, code };
     } finally {
@@ -670,13 +720,13 @@ export default function App() {
   };
 
   // Auth Handler: Acesso de Contingência / Homologação para Contas Master
-  const handleDevAdminSignIn = async (email: string = 'comarafab@gmail.com') => {
+  const handleDevAdminSignIn = async (email: string = 'coari.comara@gmail.com') => {
     try {
       setIsVerifyingPermissions(true);
       const { user, processed } = await authService.signInWithDevMaster(email);
       return applyUserAuth(user, processed);
     } catch (err: any) {
-      console.error('Erro no acesso de desenvolvimento:', err);
+      console.warn('Aviso no acesso de desenvolvimento:', err);
       const errorMsg = err?.message || 'Falha no acesso de contingência.';
       showToast(errorMsg, 'error');
       return { success: false, error: errorMsg };
@@ -1031,8 +1081,13 @@ export default function App() {
       showToast('Ação bloqueada: Seu nível de acesso não permite inclusão manual de lançamentos.', 'error');
       return;
     }
-    const safeMat = typeof matricula === 'string' ? matricula : (employees[0]?.matricula || '');
     const safeDate = typeof defaultDate === 'string' ? defaultDate : undefined;
+    const targetComp = safeDate ? safeDate.slice(0, 7) : currentCompetencia;
+    if (competenciaControle?.status === 'FECHADO' && targetComp === currentCompetencia) {
+      showToast(`A competência ${currentCompetencia} está homologada e fechada. Para novos apontamentos neste período, solicite a reabertura administrativa.`, 'error');
+      return;
+    }
+    const safeMat = typeof matricula === 'string' ? matricula : (employees[0]?.matricula || '');
     setDailyEntryInitialRecord(null);
     setDailyEntryPreselectedMatricula(safeMat);
     setDailyEntryPreselectedDate(safeDate);
@@ -1045,6 +1100,11 @@ export default function App() {
       return;
     }
     if (!record || typeof record !== 'object' || typeof record.id !== 'string') return;
+    const recordComp = (record.dataRegistro || record.data_ocorrencia || '').slice(0, 7);
+    if (competenciaControle?.status === 'FECHADO' && recordComp === currentCompetencia) {
+      showToast(`Este lançamento pertence à competência ${currentCompetencia}, que está homologada e fechada. Reabra a competência para efetuar alterações.`, 'error');
+      return;
+    }
     setDailyEntryInitialRecord(record);
     setDailyEntryPreselectedMatricula(typeof record.matricula === 'string' ? record.matricula : '');
     setDailyEntryPreselectedDate(typeof record.dataRegistro === 'string' ? record.dataRegistro : record.data_ocorrencia);
@@ -1058,6 +1118,11 @@ export default function App() {
     }
     if (typeof id !== 'string') return;
     const targetRec = records.find(r => r.id === id);
+    const recordComp = (targetRec?.dataRegistro || targetRec?.data_ocorrencia || '').slice(0, 7);
+    if (competenciaControle?.status === 'FECHADO' && recordComp === currentCompetencia) {
+      showToast(`Exclusão bloqueada: O lançamento pertence à competência ${currentCompetencia}, que está homologada e fechada.`, 'error');
+      return;
+    }
     try {
       await firestoreService.deleteTimeRecord(id);
       storageService.deleteTimeRecord(id);
@@ -1086,6 +1151,10 @@ export default function App() {
   const handleOpenSptfDispensa = (matricula?: string | any) => {
     if (userRole === 'AUDITOR' || userMode === 'COLABORADOR') {
       showToast('Ação bloqueada: Seu nível de acesso não permite emissão de dispensas de SPTF.', 'error');
+      return;
+    }
+    if (competenciaControle?.status === 'FECHADO') {
+      showToast(`A competência ${currentCompetencia} está homologada e fechada. Emissão de dispensas com compensação neste mês bloqueada.`, 'error');
       return;
     }
     const safeMat = typeof matricula === 'string' ? matricula : undefined;
@@ -1175,6 +1244,10 @@ export default function App() {
   const handleOpenQuickBatchModal = () => {
     if (userRole === 'AUDITOR' || userMode === 'COLABORADOR') {
       showToast('Ação bloqueada: Apenas Gestores e Super Admins podem realizar lançamentos em lote.', 'error');
+      return;
+    }
+    if (competenciaControle?.status === 'FECHADO') {
+      showToast(`A competência ${currentCompetencia} está homologada e fechada. Apontamentos em lote bloqueados neste período.`, 'error');
       return;
     }
     setIsQuickBatchModalOpen(true);
@@ -1839,6 +1912,18 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1880px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
+        {/* Barra de Gestão Contábil de Competência (Homologação & Transporte de Saldos) */}
+        <div className="mb-6">
+          <CompetenciaStatusBar
+            competencia={currentCompetencia}
+            controle={competenciaControle}
+            onSelectCompetencia={(comp) => setCurrentCompetencia(comp)}
+            onOpenManagementModal={() => setIsCompetenciaModalOpen(true)}
+            isGlobalAdmin={isGlobalUser}
+            theme={theme}
+          />
+        </div>
+
         <ErrorBoundary fallbackTitle="Erro ao carregar aba selecionada">
           {activeTab === 'dashboard' && (
             <LookerDashboard
@@ -2197,6 +2282,21 @@ export default function App() {
 
       {/* 9. Indicador de Conexão Offline PWA */}
       <OfflineIndicator theme={theme} />
+
+      {/* 10. Modal: Gestão de Competência e Fechamento Contábil */}
+      <CompetenciaManagementModal
+        isOpen={isCompetenciaModalOpen}
+        onClose={() => setIsCompetenciaModalOpen(false)}
+        competencia={currentCompetencia}
+        controle={competenciaControle}
+        employees={employees}
+        records={records}
+        currentUserEmail={currentUserEmail}
+        isGlobalAdmin={isGlobalUser}
+        theme={theme}
+        onCompetenciaUpdated={(comp) => carregarControleCompetencia(comp)}
+        onShowToast={showToast}
+      />
     </div>
   );
 }
