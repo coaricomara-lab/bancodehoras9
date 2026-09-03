@@ -24,10 +24,13 @@ import {
 import {
   MONTH_NAMES_FULL,
   getCompetenciaAnterior,
-  minutosParaHorasDecimais
+  minutosParaHorasDecimais,
+  podeHomologarCompetencia
 } from '../services/competenciaEngine';
 import { Employee, TimeRecord } from '../types';
 import { Button, Badge } from './ui';
+import { ValidityAlertsPanel } from './ValidityAlertsPanel';
+import { LiquidacaoReportModal } from './LiquidacaoReportModal';
 
 interface CompetenciaManagementModalProps {
   isOpen: boolean;
@@ -70,6 +73,9 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
   // Lista do histórico
   const [todasCompetencias, setTodasCompetencias] = useState<CompetenciaControle[]>([]);
   const [isLoadingHistorico, setIsLoadingHistorico] = useState(false);
+
+  // Fase 5 — Relatório de Liquidação/Rescisão (extrato em memória, sem escrita)
+  const [isLiquidacaoReportOpen, setIsLiquidacaoReportOpen] = useState(false);
 
   // Carrega histórico quando abre a aba
   useEffect(() => {
@@ -312,6 +318,9 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
                 </div>
               </div>
 
+              {/* Fase 5 — Alertas de validade (30/60 dias), 100% em memória: zero consultas */}
+              <ValidityAlertsPanel records={records} employees={employees} theme={theme} />
+
               {/* Status e Ações */}
               {statusAtual === 'FECHADO' ? (
                 <div className={`p-5 rounded-xl border space-y-4 ${isDark ? 'bg-rose-950/20 border-rose-800/40 text-slate-200' : 'bg-rose-50 border-rose-200 text-rose-900'}`}>
@@ -379,7 +388,7 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
                       variant="primary"
                       size="md"
                       onClick={handleExecutarFechamento}
-                      disabled={isProcessing || !isGlobalAdmin}
+                      disabled={isProcessing || !podeHomologarCompetencia(isGlobalAdmin, statusAtual)}
                       className="bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-600/20"
                     >
                       <FileCheck2 className="w-4 h-4 mr-2" />
@@ -399,6 +408,21 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
                   <li><strong>Imutabilidade de Histórico:</strong> Fechar a competência impede alterações indevidas em períodos já auditados e enviados para pagamento.</li>
                   <li><strong>Recálculo em Cascata:</strong> Caso lançamentos retroativos sejam retificados em uma competência anterior, o sistema propaga o delta linearmente pelas competências posteriores fechadas com registro de auditoria.</li>
                 </ul>
+              </div>
+
+              {/* Fase 5 — Extrato de Liquidação/Rescisão (em memória, sem escrita no banco) */}
+              <div className="flex items-center justify-end">
+                <Button
+                  id="btn-relatorio-liquidacao"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsLiquidacaoReportOpen(true)}
+                  disabled={isProcessing}
+                  className="text-xs font-semibold text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                >
+                  <FileText className="w-3.5 h-3.5 mr-1.5" />
+                  Extrato de Liquidação / Rescisão (RH)
+                </Button>
               </div>
             </div>
           ) : (
@@ -522,6 +546,17 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
           </Button>
         </div>
       </div>
+
+      {/* Fase 5 — Relatório de Liquidação/Rescisão (leitura em memória, sem escrita) */}
+      <LiquidacaoReportModal
+        isOpen={isLiquidacaoReportOpen}
+        onClose={() => setIsLiquidacaoReportOpen(false)}
+        records={records}
+        employees={employees}
+        competencia={competencia}
+        currentUserEmail={currentUserEmail}
+        theme={theme}
+      />
 
       {/* Modal Secundário: Reabertura com Justificativa */}
       {isReabrirModalOpen && (

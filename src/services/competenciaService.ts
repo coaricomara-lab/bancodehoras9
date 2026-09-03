@@ -41,6 +41,10 @@ import {
   horasParaMinutos,
   validarPreRequisitoFechamento,
   calcularDeltaRefechamentoMinutos,
+  apurarRastreioLancamentos,
+  calcularMetadadosValidade,
+  montarResumoAuditoriaFechamento,
+  DiffServidorAuditoria,
 } from './competenciaEngine';
 import { TimeRecord, InsalubrityRecord, Employee } from '../types';
 
@@ -282,6 +286,8 @@ export const competenciaService = {
       const novosResumos: ResumoMensalContabil[] = [];
       // Fase 4: apura o delta retroativo de cada servidor refechado para cascata
       const pendenciasCascata: { matricula: string; deltaMinutos: number }[] = [];
+      // Fase 5 — Diffs de auditoria: valor anterior → novo por servidor
+      const diffsServidores: DiffServidorAuditoria[] = [];
       let todosIdempotentes = resumosAtuais.length > 0 && resumosAtuais.length === colaboradores.length;
 
       for (const emp of colaboradores) {
@@ -303,6 +309,28 @@ export const competenciaService = {
 
         novosResumos.push(novoResumo);
 
+        // Fase 5 — Metadados de validade no resumo (rastreabilidade consolidada,
+        // calculados em memória: zero leituras extras do Firestore)
+        const lancamentosRastreio = lancamentosDoMes
+          .filter(
+            (l) =>
+              (l.matricula || '').trim().toUpperCase() === (emp.matricula || '').trim().toUpperCase()
+          )
+          .map((l) => ({
+            saldoCalculadoMinutos: horasParaMinutos(l.saldoCalculado),
+            saldoRemanescenteMinutos:
+              typeof l.saldo_remanescente === 'number' ? horasParaMinutos(l.saldo_remanescente) : undefined,
+          }));
+        const rastreio = apurarRastreioLancamentos(lancamentosRastreio);
+        Object.assign(
+          novoResumo,
+          calcularMetadadosValidade({
+            competencia,
+            minutosGerados: rastreio.minutosGerados,
+            minutosCompensados: rastreio.minutosCompensados,
+          })
+        );
+
         const resumoExistente = mapaResumosAtuais.get(emp.matricula);
         if (!isFechamentoIdempotente(resumoExistente, novoResumo)) {
           todosIdempotentes = false;
@@ -312,6 +340,15 @@ export const competenciaService = {
           const deltaMinutos = calcularDeltaRefechamentoMinutos(resumoExistente, novoResumo);
           if (deltaMinutos !== 0) {
             pendenciasCascata.push({ matricula: emp.matricula, deltaMinutos });
+          }
+          // Fase 5 — Auditoria enriquecida: valor anterior → novo por servidor
+          if (resumoExistente) {
+            diffsServidores.push({
+              matricula: emp.matricula,
+              saldoFinalAnteriorMinutos: Math.round(resumoExistente.saldoFinalTransportadoMinutos),
+              saldoFinalNovoMinutos: Math.round(novoResumo.saldoFinalTransportadoMinutos),
+              deltaMinutos,
+            });
           }
         }
       }
@@ -386,17 +423,7 @@ export const competenciaService = {
         );
       });
 
-      // 8. Trilha de auditoria
-      await registrarLogAuditoria({
-        usuarioId: operadorEmail,
-        usuarioNome: operadorEmail,
-        canteiroId: 'GLOBAL',
-        recursoId: competencia,
-        tipoAcao: 'FECHAMENTO_COMPETENCIA',
-        detalhes: `Homologação e Fechamento da Competência ${competencia}. ${colaboradores.length} colaboradores consolidados. Total lançamentos: ${lancamentosDoMes.length}.`,
-      });
-
-      // 9. Fase 4 — Recálculo em cascata: propaga o delta retroativo às
+      // 8. Fase 4 — Recálculo em cascata: propaga o delta retroativo às
       //    competências posteriores já homologadas (movimentos próprios intactos)
       const mesesAfetadosCascata: string[] = [];
       for (const pendencia of pendenciasCascata) {
@@ -409,6 +436,24 @@ export const competenciaService = {
         });
         mesesAfetadosCascata.push(...resultadoCascata.mesesAfetados);
       }
+
+      // 9. Trilha de auditoria enriquecida (Fase 5): valor anterior → novo por
+      //    servidor, usuário, data/hora, motivo e impacto — em logs_auditoria
+      //    existente, sem dados pessoais além de matrícula
+      await registrarLogAuditoria({
+        usuarioId: operadorEmail,
+        usuarioNome: operadorEmail,
+        canteiroId: 'GLOBAL',
+        recursoId: competencia,
+        tipoAcao: 'FECHAMENTO_COMPETENCIA',
+        detalhes: `Homologação e Fechamento da Competência ${competencia}. ${colaboradores.length} colaboradores consolidados. Total lançamentos: ${lancamentosDoMes.length}.`,
+        detalhesJson: montarResumoAuditoriaFechamento({
+          competencia,
+          operadorEmail,
+          diffs: diffsServidores,
+          mesesAfetadosCascata,
+        }),
+      });
 
       return {
         sucesso: true,
@@ -447,9 +492,14 @@ export const competenciaService = {
 
     const compDocRef = doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competencia);
 
+    // Fase 5 — captura o status anterior para auditoria (mesma leitura da transação)
+    let statusAnteriorReabertura = 'ABERTO';
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(compDocRef);
       const versaoAtual = snap.exists() ? (snap.data().versaoCalculo || 1) : 1;
+      if (snap.exists()) {
+        statusAnteriorReabertura = String(snap.data()?.status || 'ABERTO');
+      }
 
       tx.set(
         compDocRef,
@@ -466,6 +516,8 @@ export const competenciaService = {
       );
     });
 
+    // Fase 5 — Auditoria enriquecida: status anterior → novo, usuário,
+    // data/hora, motivo e impacto (sem leituras adicionais)
     await registrarLogAuditoria({
       usuarioId: operadorEmail,
       usuarioNome: operadorEmail,
@@ -473,6 +525,18 @@ export const competenciaService = {
       recursoId: competencia,
       tipoAcao: 'REABERTURA_COMPETENCIA',
       detalhes: `Reabertura da Competência ${competencia}. Motivo: ${motivo.trim()}`,
+      detalhesJson: {
+        competencia,
+        usuario: operadorEmail,
+        dataHora: new Date().toISOString(),
+        motivo: motivo.trim(),
+        alteracao: {
+          statusAnterior: statusAnteriorReabertura,
+          novoStatus: 'REABERTO',
+        },
+        impacto:
+          'Competência desbloqueada para retificação de lançamentos; o refechamento propagará o delta às competências posteriores homologadas (recálculo em cascata).',
+      },
     });
   },
 
