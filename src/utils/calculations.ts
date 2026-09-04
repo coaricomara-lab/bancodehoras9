@@ -1,6 +1,7 @@
 import { OccurrenceType, Branch, TimeRecord, Employee, MonthlyEmployeeSummary } from '../types';
 import { BRAZILIAN_HOLIDAYS_2025_2026 } from '../constants/defaultData';
 import { HorariosInstituicao, RegrasCalculoInstituicao } from '../types/institutionConfig';
+import { PRAZO_BANCO_HORAS_MESES } from '../services/competenciaEngine';
 
 export type DestinationTarget = 'FOLHA_PAGAMENTO' | 'BANCO_HORAS' | 'NEUTRO_AUDITORIA';
 
@@ -452,7 +453,7 @@ export interface PrescriptionInfo {
 /**
  * Calcula a data limite de compensação e dias restantes para prescrição SPTF (Art. 59 § 5º do SPTF - 6 meses).
  */
-export function getRecordPrescriptionInfo(dataRegistro: string, diasValidade: number = 180): PrescriptionInfo {
+export function getRecordPrescriptionInfo(dataRegistro: string, diasValidade: number = PRAZO_BANCO_HORAS_MESES * 30): PrescriptionInfo {
   if (!dataRegistro) {
     return {
       dataOrigem: '',

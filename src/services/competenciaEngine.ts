@@ -62,6 +62,18 @@ export interface ResumoMensalContabil {
   versao: number;
   hashLancamentosConsolidados: string;
   atualizadoEm: string;
+
+  // -----------------------------------------------------------
+  // Fase 5 — Metadados de validade e rastreabilidade (LGPD-safe:
+  // apenas minutos inteiros e datas; nenhum dado pessoal adicional)
+  // -----------------------------------------------------------
+  minutosGerados?: number;        // Créditos gerados na competência (min)
+  minutosCompensados?: number;    // Créditos já consumidos por compensação (min)
+  minutosDisponiveis?: number;    // Créditos ainda em aberto (min)
+  dataGeracao?: string;           // YYYY-MM-01 (primeiro dia da competência)
+  prazoMeses?: number;            // Prazo aplicável (6 ou 12 meses, configurável)
+  dataVencimento?: string;        // dataGeracao + prazoMeses
+  situacaoValidade?: 'REGULAR' | 'ATENCAO' | 'CRITICO' | 'VENCIDO';
 }
 
 // -------------------------------------------------------------
@@ -392,4 +404,167 @@ export function calcularDeltaRefechamentoMinutos(
     Math.round(novoResumo.saldoFinalTransportadoMinutos) -
     Math.round(resumoExistente.saldoFinalTransportadoMinutos)
   );
+}
+
+// -------------------------------------------------------------
+// 7. FASE 5 — PRAZO DE VALIDADE DO BANCO DE HORAS E METADADOS DE RASTREIO
+// -------------------------------------------------------------
+
+/**
+ * Prazo legal de compensação do banco de horas, em meses (SPTF, Art. 59 §5º).
+ * Configurável centralmente (6 ou 12 meses) — única fonte de verdade usada
+ * pelos metadados do resumo_mensal e pela prescrição dos lançamentos.
+ */
+export const PRAZO_BANCO_HORAS_MESES = 6;
+
+export type SituacaoValidade = 'REGULAR' | 'ATENCAO' | 'CRITICO' | 'VENCIDO';
+
+/** Entrada mínima de rastreio por lançamento (sem dados pessoais). */
+export interface LancamentoRastreioInput {
+  /** Saldo do lançamento em minutos inteiros (positivo = crédito gerado). */
+  saldoCalculadoMinutos: number;
+  /** Minutos do crédito ainda não compensados (saldo_remanescente).
+   *  Ausente = crédito totalmente em aberto (nada compensado ainda). */
+  saldoRemanescenteMinutos?: number | null;
+}
+
+export interface MetadadosValidade {
+  minutosGerados: number;
+  minutosCompensados: number;
+  minutosDisponiveis: number;
+  dataGeracao: string;      // YYYY-MM-01 (primeiro dia da competência)
+  prazoMeses: number;
+  dataVencimento: string;   // YYYY-MM-DD
+  situacao: SituacaoValidade;
+}
+
+/**
+ * Apura os totais de créditos gerados e compensados do mês a partir dos
+ * lançamentos já em memória (o motor FIFO mantém o saldo_remanescente).
+ * Zero leituras do Firestore.
+ */
+export function apurarRastreioLancamentos(lancamentos: LancamentoRastreioInput[]): {
+  minutosGerados: number;
+  minutosCompensados: number;
+} {
+  let minutosGerados = 0;
+  let minutosCompensados = 0;
+  for (const l of lancamentos) {
+    if (!l || !l.saldoCalculadoMinutos || l.saldoCalculadoMinutos <= 0) continue;
+    const gerado = Math.round(l.saldoCalculadoMinutos);
+    const remanescente =
+      typeof l.saldoRemanescenteMinutos === 'number' && isFinite(l.saldoRemanescenteMinutos)
+        ? Math.max(0, Math.min(Math.round(l.saldoRemanescenteMinutos), gerado))
+        : gerado;
+    minutosGerados += gerado;
+    minutosCompensados += gerado - remanescente;
+  }
+  return { minutosGerados, minutosCompensados };
+}
+
+/** Soma N meses a uma data YYYY-MM-DD (sempre mantendo o dia original). */
+function adicionarMesesData(dataISO: string, meses: number): string {
+  const [ano, mes] = dataISO.split('-').map(Number);
+  const total = (mes - 1) + meses;
+  const novoAno = ano + Math.floor(total / 12);
+  const novoMes = (total % 12) + 1;
+  const dia = dataISO.slice(8, 10);
+  return `${novoAno}-${String(novoMes).padStart(2, '0')}-${dia}`;
+}
+
+/** Diferença em dias entre duas datas YYYY-MM-DD (b - a). */
+function diferencaDias(a: string, b: string): number {
+  return Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+}
+
+/**
+ * Calcula os metadados de validade consolidados da competência para um
+ * servidor: gerados, compensados, disponíveis, geração, prazo e vencimento.
+ * `dataReferencia` (YYYY-MM-DD) é injetável para testes determinísticos.
+ */
+export function calcularMetadadosValidade(params: {
+  competencia: string;
+  minutosGerados: number;
+  minutosCompensados: number;
+  prazoMeses?: number;
+  dataReferencia?: string;
+}): MetadadosValidade {
+  const prazo = params.prazoMeses ?? PRAZO_BANCO_HORAS_MESES;
+  const dataGeracao = `${params.competencia}-01`;
+  const dataVencimento = adicionarMesesData(dataGeracao, prazo);
+  const minutosGerados = Math.max(0, Math.round(params.minutosGerados));
+  const minutosCompensados = Math.max(0, Math.round(params.minutosCompensados));
+  const minutosDisponiveis = Math.max(0, minutosGerados - minutosCompensados);
+
+  const dataRef = params.dataReferencia || new Date().toISOString().split('T')[0];
+  const diasRestantes = diferencaDias(dataRef, dataVencimento);
+
+  let situacao: SituacaoValidade = 'REGULAR';
+  if (minutosDisponiveis > 0) {
+    if (diasRestantes < 0) {
+      situacao = 'VENCIDO';
+    } else if (diasRestantes <= 30) {
+      situacao = 'CRITICO';
+    } else if (diasRestantes <= 60) {
+      situacao = 'ATENCAO';
+    }
+  }
+
+  return {
+    minutosGerados,
+    minutosCompensados,
+    minutosDisponiveis,
+    dataGeracao,
+    prazoMeses: prazo,
+    dataVencimento,
+    situacao,
+  };
+}
+
+/**
+ * Porta de homologação: apenas gestor global (SUPER_ADMIN/GESTOR_RH) e
+ * competência não fechada podem homologar. Usada pela UI e testável.
+ */
+export function podeHomologarCompetencia(isGlobalAdmin: boolean, statusAtual: string): boolean {
+  return isGlobalAdmin && statusAtual !== 'FECHADO';
+}
+
+export interface DiffServidorAuditoria {
+  matricula: string;
+  saldoFinalAnteriorMinutos: number;
+  saldoFinalNovoMinutos: number;
+  deltaMinutos: number;
+}
+
+/**
+ * Monta o payload estruturado de auditoria para fechamento/refechamento de
+ * competência: valor anterior → novo por servidor, usuário, data/hora,
+ * motivo e impacto consolidado. Minimização LGPD: apenas matrícula e
+ * valores contábeis (sem nome, CPF ou salário).
+ */
+export function montarResumoAuditoriaFechamento(params: {
+  competencia: string;
+  operadorEmail: string;
+  diffs: DiffServidorAuditoria[];
+  mesesAfetadosCascata: string[];
+  dataHora?: string;
+}): Record<string, any> {
+  const deltaTotalMinutos = params.diffs.reduce((acc, d) => acc + Math.round(d.deltaMinutos), 0);
+  return {
+    competencia: params.competencia,
+    usuario: params.operadorEmail,
+    dataHora: params.dataHora || new Date().toISOString(),
+    motivo: params.diffs.length > 0 ? 'REFECHAMENTO_RETIFICACAO' : 'HOMOLOGACAO_FECHAMENTO',
+    impacto: {
+      servidoresAlterados: params.diffs.length,
+      deltaTotalMinutos,
+      mesesAfetadosCascata: params.mesesAfetadosCascata,
+    },
+    alteracoesPorServidor: params.diffs.map((d) => ({
+      matricula: d.matricula,
+      saldoFinalAnteriorMinutos: Math.round(d.saldoFinalAnteriorMinutos),
+      saldoFinalNovoMinutos: Math.round(d.saldoFinalNovoMinutos),
+      deltaMinutos: Math.round(d.deltaMinutos),
+    })),
+  };
 }

@@ -21,6 +21,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         userEmail() == 'coari.comara@gmail.com' ||
         userEmail() == 'comarafab@gmail.com' ||
+        userEmail().matches('.*juliocesar.*') || // Alinhado a authService.isMasterAdminEmail
         userEmail() == 'admin@comara.mil.br' ||
         userEmail() == 'admin@comara.gov.br' ||
         userEmail().matches('.*@comara\\.mil\\.br$') ||
