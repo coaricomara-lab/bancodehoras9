@@ -45,6 +45,11 @@ import {
   calcularMetadadosValidade,
   montarResumoAuditoriaFechamento,
   DiffServidorAuditoria,
+  ControleCanteiro,
+  StatusCanteiros,
+  normalizarCanteiroId,
+  validarLancamentoCanteiro,
+  podeGerenciarCanteiro,
 } from './competenciaEngine';
 import { TimeRecord, InsalubrityRecord, Employee } from '../types';
 
@@ -64,6 +69,15 @@ export interface CompetenciaControle {
   processandoPorEmail?: string;
   versaoCalculo: number;
   atualizadoEm: string;
+  statusCanteiros?: StatusCanteiros;
+}
+
+export interface GerenciarCanteiroParams {
+  competencia: string;
+  canteiroId: string;
+  operadorEmail: string;
+  operadorRole?: string;
+  motivo?: string;
 }
 
 export interface FecharCompetenciaParams {
@@ -139,6 +153,143 @@ export const competenciaService = {
         atualizadoEm: new Date().toISOString(),
       };
     }
+  },
+
+  subscribeControleCompetencia(
+    competencia: string,
+    onSuccess: (controle: CompetenciaControle) => void,
+    onError?: (error: Error) => void,
+  ): Unsubscribe {
+    if (!isCompetenciaValida(competencia)) {
+      onSuccess({
+        id: competencia,
+        ano: 0,
+        mes: 0,
+        status: 'ABERTO',
+        versaoCalculo: 1,
+        atualizadoEm: new Date().toISOString(),
+      });
+      return () => {};
+    }
+
+    const [anoStr, mesStr] = competencia.split('-');
+    const fallback: CompetenciaControle = {
+      id: competencia,
+      ano: parseInt(anoStr, 10),
+      mes: parseInt(mesStr, 10),
+      status: 'ABERTO',
+      versaoCalculo: 1,
+      atualizadoEm: new Date().toISOString(),
+      statusCanteiros: {},
+    };
+
+    return onSnapshot(
+      doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competencia),
+      (snap) => onSuccess(snap.exists() ? (snap.data() as CompetenciaControle) : fallback),
+      (error) => onError?.(error),
+    );
+  },
+
+  async verificarTravaCanteiro(
+    competencia: string,
+    canteiroId: string,
+    superAdmin = false,
+  ): Promise<{
+    permitido: boolean;
+    bypass: boolean;
+    motivo: string;
+    competenciaAnterior: string;
+  }> {
+    const competenciaAnterior = getCompetenciaAnterior(competencia);
+    const anterior = await getDoc(doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competenciaAnterior));
+    const statusCanteiros = anterior.exists()
+      ? (anterior.data()?.statusCanteiros as StatusCanteiros | undefined)
+      : undefined;
+    const validacao = validarLancamentoCanteiro(statusCanteiros, canteiroId, superAdmin);
+    return { ...validacao, competenciaAnterior };
+  },
+
+  async fecharCanteiro(params: GerenciarCanteiroParams): Promise<void> {
+    const { competencia, canteiroId, operadorEmail, operadorRole } = params;
+    const canteiro = normalizarCanteiroId(canteiroId);
+    if (!isCompetenciaValida(competencia) || !canteiro) {
+      throw new Error('Competência e canteiro são obrigatórios.');
+    }
+    if (!podeGerenciarCanteiro(operadorRole, canteiroId, canteiro)) {
+      throw new Error('Você só pode gerenciar o fechamento do seu canteiro.');
+    }
+
+    const ref = doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competencia);
+    const agora = new Date().toISOString();
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      const atual = (snap.exists() ? snap.data()?.statusCanteiros : {}) as StatusCanteiros;
+      const registro: ControleCanteiro = {
+        status: 'FECHADO',
+        data: agora,
+        usuario: operadorEmail,
+        motivo: null,
+      };
+      const statusCanteiros = { ...atual, [canteiro]: registro };
+      const atualizacao = ['SUPER_ADMIN', 'RH_ADMIN', 'GESTOR_RH'].includes(String(operadorRole || '').toUpperCase())
+        ? { id: competencia, statusCanteiros, atualizadoEm: agora }
+        : { statusCanteiros };
+      tx.set(ref, atualizacao, { merge: true });
+    });
+
+    await registrarLogAuditoria({
+      usuarioId: operadorEmail,
+      usuarioNome: operadorEmail,
+      usuarioPerfil: operadorRole,
+      canteiroId: canteiro,
+      recursoId: competencia,
+      tipoAcao: 'FECHAMENTO_CANTEIRO',
+      detalhes: `Fechamento do canteiro ${canteiro} na competência ${competencia}.`,
+      detalhesJson: { competencia, canteiro, usuario: operadorEmail, dataHora: agora, acao: 'FECHAR' },
+    });
+  },
+
+  async reabrirCanteiro(params: GerenciarCanteiroParams): Promise<void> {
+    const { competencia, canteiroId, operadorEmail, operadorRole, motivo } = params;
+    const canteiro = normalizarCanteiroId(canteiroId);
+    if (!isCompetenciaValida(competencia) || !canteiro) {
+      throw new Error('Competência e canteiro são obrigatórios.');
+    }
+    if (!motivo || motivo.trim().length < 10) {
+      throw new Error('A justificativa de reabertura deve conter ao menos 10 caracteres.');
+    }
+    if (!podeGerenciarCanteiro(operadorRole, canteiroId, canteiro)) {
+      throw new Error('Você só pode gerenciar o fechamento do seu canteiro.');
+    }
+
+    const ref = doc(db, COLLECTIONS.COMPETENCIAS_CONTROLE, competencia);
+    const agora = new Date().toISOString();
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      const atual = (snap.exists() ? snap.data()?.statusCanteiros : {}) as StatusCanteiros;
+      const registro: ControleCanteiro = {
+        status: 'ABERTO',
+        data: agora,
+        usuario: operadorEmail,
+        motivo: motivo.trim(),
+      };
+      const statusCanteiros = { ...atual, [canteiro]: registro };
+      const atualizacao = ['SUPER_ADMIN', 'RH_ADMIN', 'GESTOR_RH'].includes(String(operadorRole || '').toUpperCase())
+        ? { id: competencia, statusCanteiros, atualizadoEm: agora }
+        : { statusCanteiros };
+      tx.set(ref, atualizacao, { merge: true });
+    });
+
+    await registrarLogAuditoria({
+      usuarioId: operadorEmail,
+      usuarioNome: operadorEmail,
+      usuarioPerfil: operadorRole,
+      canteiroId: canteiro,
+      recursoId: competencia,
+      tipoAcao: 'REABERTURA_CANTEIRO',
+      detalhes: `Reabertura do canteiro ${canteiro} na competência ${competencia}. Motivo: ${motivo.trim()}`,
+      detalhesJson: { competencia, canteiro, usuario: operadorEmail, dataHora: agora, motivo: motivo.trim(), acao: 'REABRIR' },
+    });
   },
 
   /**

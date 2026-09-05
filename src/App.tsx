@@ -48,6 +48,12 @@ import { registrarLogAuditoria } from './services/auditService';
 import { competenciaService, CompetenciaControle } from './services/competenciaService';
 import { CompetenciaStatusBar } from './components/CompetenciaStatusBar';
 import { CompetenciaManagementModal } from './components/CompetenciaManagementModal';
+import { CanteiroLockBanner } from './components/CanteiroLockBanner';
+import {
+  getCompetenciaAnterior,
+  normalizarCanteiroId,
+  validarLancamentoCanteiro,
+} from './services/competenciaEngine';
 import { useInactivityTimeout } from './hooks/useInactivityTimeout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CheckCircle2, AlertCircle, Cloud, RefreshCw, X, Database, ShieldAlert, BookOpen, ArrowLeft, LogOut, Lock } from 'lucide-react';
@@ -162,6 +168,7 @@ export default function App() {
     return `${y}-${m}`;
   });
   const [competenciaControle, setCompetenciaControle] = useState<CompetenciaControle | null>(null);
+  const [competenciaAnteriorControle, setCompetenciaAnteriorControle] = useState<CompetenciaControle | null>(null);
   const [isCompetenciaModalOpen, setIsCompetenciaModalOpen] = useState(false);
 
   const carregarControleCompetencia = useCallback(async (comp: string) => {
@@ -174,8 +181,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    carregarControleCompetencia(currentCompetencia);
-  }, [currentCompetencia, carregarControleCompetencia]);
+    const unsubscribeAtual = competenciaService.subscribeControleCompetencia(
+      currentCompetencia,
+      setCompetenciaControle,
+      (error) => console.warn('Erro no listener de competência:', error),
+    );
+    const unsubscribeAnterior = competenciaService.subscribeControleCompetencia(
+      getCompetenciaAnterior(currentCompetencia),
+      setCompetenciaAnteriorControle,
+      (error) => console.warn('Erro no listener da competência anterior:', error),
+    );
+    return () => {
+      unsubscribeAtual();
+      unsubscribeAnterior();
+    };
+  }, [currentCompetencia]);
 
   // Debounce de 250ms na navegação de competência (Requisito 6C da especificação):
   // cliques acelerados em avançar/voltar executam apenas a leitura da competência final.
@@ -202,6 +222,50 @@ export default function App() {
   const currentUserCanteiro = currentUser ? rbacService.getUserCanteiroId(currentUser) : undefined;
   const isGlobalUser = rbacService.isGlobalRole(userRole);
   const activeCanteiro = !isGlobalUser ? currentUserCanteiro : undefined;
+  const isSuperAdminSession = userRole === 'SUPER_ADMIN' || isMasterAdminEmail(currentUser?.email || '');
+
+  const confirmarBypassCanteiro = useCallback((canteiroId: string, acao: string) => {
+    if (!isSuperAdminSession) return false;
+    const confirmado = window.confirm(
+      `Ação de SUPER_ADMIN: o canteiro ${normalizarCanteiroId(canteiroId)} está bloqueado. Confirmar bypass para ${acao}? Essa ação será auditada.`,
+    );
+    if (confirmado) {
+      registrarLogAuditoria({
+        usuarioId: currentUser?.email || 'superadmin',
+        usuarioNome: currentUser?.nome || currentUser?.email || 'SUPER_ADMIN',
+        usuarioPerfil: 'SUPER_ADMIN',
+        canteiroId: normalizarCanteiroId(canteiroId),
+        tipoAcao: 'BYPASS_TRAVA_CANTEIRO',
+        detalhes: `Bypass de SUPER_ADMIN para ${acao} no canteiro ${normalizarCanteiroId(canteiroId)} na competência ${currentCompetencia}.`,
+        recursoId: currentCompetencia,
+      });
+    }
+    return confirmado;
+  }, [currentCompetencia, currentUser, isSuperAdminSession]);
+
+  const podeGravarNoCanteiro = useCallback((canteiroId: string, acao: string, competencia = currentCompetencia) => {
+    const validacao = validarLancamentoCanteiro(
+      competencia === currentCompetencia ? competenciaAnteriorControle?.statusCanteiros : undefined,
+      canteiroId,
+      false,
+    );
+    if (!validacao.permitido) {
+      if (confirmarBypassCanteiro(canteiroId, acao)) return true;
+      showToast(validacao.motivo, 'error');
+      return false;
+    }
+    return true;
+  }, [competenciaAnteriorControle, confirmarBypassCanteiro, currentCompetencia, showToast]);
+
+  const podeGravarNoPeriodo = useCallback((canteiroId: string, competencia: string, acao: string) => {
+    if (!podeGravarNoCanteiro(canteiroId, acao, competencia)) return false;
+    if (competenciaControle?.status === 'FECHADO' && competencia === currentCompetencia) {
+      if (confirmarBypassCanteiro(canteiroId, acao)) return true;
+      showToast(`A competência ${currentCompetencia} está homologada e fechada. Reabra a competência antes de prosseguir.`, 'error');
+      return false;
+    }
+    return true;
+  }, [competenciaControle?.status, confirmarBypassCanteiro, currentCompetencia, podeGravarNoCanteiro, showToast]);
 
   const initFirestoreSubscriptions = useCallback(() => {
     setIsSyncing(true);
@@ -832,6 +896,9 @@ export default function App() {
   // Firestore Write: Salvar Lançamento Individual
   const handleSaveRecord = async (newRecord: TimeRecord) => {
     const isEdit = records.some(r => r.id === newRecord.id);
+    const canteiroId = newRecord.employeeSede || activeCanteiro || 'KO';
+    const competencia = (newRecord.dataRegistro || '').slice(0, 7) || currentCompetencia;
+    if (!podeGravarNoPeriodo(canteiroId, competencia, isEdit ? 'editar lançamento' : 'salvar lançamento')) return;
     try {
       await firestoreService.saveTimeRecord(newRecord, currentUser?.email || 'admin@rh.cloud');
       showToast(`Lançamento de ${newRecord.horasBrutas}h gravado no Cloud Firestore com sucesso!`, 'success');
@@ -866,6 +933,8 @@ export default function App() {
 
   // Firestore Write: Importar Lote de Lançamentos Diários com Suporte a Arquivos Grandes (4.500+ itens)
   const handleImportRecordsBatch = async (importedRecords: TimeRecord[]) => {
+    const canteiros = Array.from(new Set(importedRecords.map((record) => record.employeeSede || activeCanteiro || 'KO')));
+    if (!canteiros.every((canteiroId) => podeGravarNoPeriodo(canteiroId, currentCompetencia, 'importar lançamentos'))) return;
     const total = importedRecords.length;
     const totalChunks = Math.ceil(total / 400);
 
@@ -1102,10 +1171,8 @@ export default function App() {
     }
     const safeDate = typeof defaultDate === 'string' ? defaultDate : undefined;
     const targetComp = safeDate ? safeDate.slice(0, 7) : currentCompetencia;
-    if (competenciaControle?.status === 'FECHADO' && targetComp === currentCompetencia) {
-      showToast(`A competência ${currentCompetencia} está homologada e fechada. Para novos apontamentos neste período, solicite a reabertura administrativa.`, 'error');
-      return;
-    }
+    const targetCanteiro = activeCanteiro || employees.find((employee) => employee.matricula === matricula)?.sede || 'KO';
+    if (!podeGravarNoPeriodo(targetCanteiro, targetComp, 'abrir lançamento')) return;
     const safeMat = typeof matricula === 'string' ? matricula : (employees[0]?.matricula || '');
     setDailyEntryInitialRecord(null);
     setDailyEntryPreselectedMatricula(safeMat);
@@ -1120,10 +1187,7 @@ export default function App() {
     }
     if (!record || typeof record !== 'object' || typeof record.id !== 'string') return;
     const recordComp = (record.dataRegistro || record.data_ocorrencia || '').slice(0, 7);
-    if (competenciaControle?.status === 'FECHADO' && recordComp === currentCompetencia) {
-      showToast(`Este lançamento pertence à competência ${currentCompetencia}, que está homologada e fechada. Reabra a competência para efetuar alterações.`, 'error');
-      return;
-    }
+    if (!podeGravarNoPeriodo(record.employeeSede || activeCanteiro || 'KO', recordComp || currentCompetencia, 'editar lançamento')) return;
     setDailyEntryInitialRecord(record);
     setDailyEntryPreselectedMatricula(typeof record.matricula === 'string' ? record.matricula : '');
     setDailyEntryPreselectedDate(typeof record.dataRegistro === 'string' ? record.dataRegistro : record.data_ocorrencia);
@@ -1138,10 +1202,7 @@ export default function App() {
     if (typeof id !== 'string') return;
     const targetRec = records.find(r => r.id === id);
     const recordComp = (targetRec?.dataRegistro || targetRec?.data_ocorrencia || '').slice(0, 7);
-    if (competenciaControle?.status === 'FECHADO' && recordComp === currentCompetencia) {
-      showToast(`Exclusão bloqueada: O lançamento pertence à competência ${currentCompetencia}, que está homologada e fechada.`, 'error');
-      return;
-    }
+    if (!podeGravarNoPeriodo(targetRec?.employeeSede || activeCanteiro || 'KO', recordComp || currentCompetencia, 'excluir lançamento')) return;
     try {
       await firestoreService.deleteTimeRecord(id);
       storageService.deleteTimeRecord(id);
@@ -1172,16 +1233,14 @@ export default function App() {
       showToast('Ação bloqueada: Seu nível de acesso não permite emissão de dispensas de SPTF.', 'error');
       return;
     }
-    if (competenciaControle?.status === 'FECHADO') {
-      showToast(`A competência ${currentCompetencia} está homologada e fechada. Emissão de dispensas com compensação neste mês bloqueada.`, 'error');
-      return;
-    }
+    if (!podeGravarNoPeriodo(activeCanteiro || 'KO', currentCompetencia, 'abrir dispensa')) return;
     const safeMat = typeof matricula === 'string' ? matricula : undefined;
     setSptfDispensaPreselectedMatricula(safeMat);
     setIsSptfDispensaModalOpen(true);
   };
 
   const handleSaveDispensaSptf = async (dispensa: DispensaSptfRecord, lancamentoRecord: TimeRecord) => {
+    if (!podeGravarNoPeriodo(dispensa.secaoCanteiro || lancamentoRecord.employeeSede || activeCanteiro || 'KO', currentCompetencia, 'salvar dispensa')) return;
     try {
       await firestoreService.emitDispensaSptf(dispensa, lancamentoRecord);
       storageService.addDispensaSptf(dispensa);
@@ -1228,6 +1287,7 @@ export default function App() {
       return;
     }
     const targetDispensa = dispensasSptf.find(d => d.id === dispensaId);
+    if (!podeGravarNoPeriodo(targetDispensa?.secaoCanteiro || activeCanteiro || 'KO', currentCompetencia, 'excluir dispensa')) return;
     try {
       await firestoreService.deleteDispensaSptf(dispensaId, lancamentoId);
       storageService.deleteDispensaSptf(dispensaId);
@@ -1265,10 +1325,7 @@ export default function App() {
       showToast('Ação bloqueada: Apenas Gestores e Super Admins podem realizar lançamentos em lote.', 'error');
       return;
     }
-    if (competenciaControle?.status === 'FECHADO') {
-      showToast(`A competência ${currentCompetencia} está homologada e fechada. Apontamentos em lote bloqueados neste período.`, 'error');
-      return;
-    }
+    if (!podeGravarNoPeriodo(activeCanteiro || 'KO', currentCompetencia, 'abrir lançamento em lote')) return;
     setIsQuickBatchModalOpen(true);
   };
 
@@ -1941,6 +1998,14 @@ export default function App() {
             isGlobalAdmin={isGlobalUser}
             theme={theme}
           />
+          <CanteiroLockBanner
+            competencia={currentCompetencia}
+            competenciaAnterior={getCompetenciaAnterior(currentCompetencia)}
+            canteiroId={activeCanteiro || currentUser?.canteiroCodigo}
+            statusCanteiros={competenciaAnteriorControle?.statusCanteiros}
+            isSuperAdmin={isSuperAdminSession}
+            theme={theme}
+          />
         </div>
 
         <ErrorBoundary fallbackTitle="Erro ao carregar aba selecionada">
@@ -2312,6 +2377,9 @@ export default function App() {
         records={records}
         currentUserEmail={currentUserEmail}
         isGlobalAdmin={isGlobalUser}
+        userRole={userRole || undefined}
+        currentUserCanteiro={activeCanteiro || currentUser?.canteiroCodigo}
+        constructionSites={constructionSites}
         theme={theme}
         onCompetenciaUpdated={(comp) => carregarControleCompetencia(comp)}
         onShowToast={showToast}

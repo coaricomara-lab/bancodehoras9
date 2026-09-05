@@ -116,6 +116,29 @@ service cloud.firestore {
       return isSuperAdmin() || !competenciaFechada(data.get('competencia', null));
     }
 
+    function competenciaAnterior(competencia) {
+      let partes = competencia.split('-');
+      let ano = int(partes[0]);
+      let mes = int(partes[1]);
+      return mes == 1
+        ? string(ano - 1) + '-12'
+        : string(ano) + '-' + (mes < 11 ? '0' + string(mes - 1) : string(mes - 1));
+    }
+
+    function canteiroAnteriorFechado(data) {
+      let competencia = data.get('competencia', null);
+      let canteiro = data.get('employeeSede', null);
+      let competenciaAnteriorRef = /databases/$(database)/documents/competencias_controle/$(competenciaAnterior(competencia));
+      return competencia != null
+        && canteiro != null
+        && exists(competenciaAnteriorRef)
+        && get(competenciaAnteriorRef).data.get('statusCanteiros', {}).get(canteiro, {}).get('status', 'ABERTO') == 'FECHADO';
+    }
+
+    function lancamentoCanteiroPermitido(data) {
+      return isSuperAdmin() || (lancamentoCompetenciaPermitida(data) && canteiroAnteriorFechado(data));
+    }
+
     function isChefeCanteiro() {
       return isAdminActive() && normalizeRole() == 'CHEFE_CANTEIRO';
     }
@@ -160,7 +183,11 @@ service cloud.firestore {
     // (GERENTE_CANTEIRO é somente leitura — não lança horas)
     match /lancamentos/{doc} {
       allow read: if true;
-      allow write: if isGlobalAdmin() || isFieldUser();
+      allow create: if (isGlobalAdmin() || isFieldUser()) && lancamentoCanteiroPermitido(request.resource.data);
+      allow update: if (isGlobalAdmin() || isFieldUser())
+        && lancamentoCanteiroPermitido(resource.data)
+        && lancamentoCanteiroPermitido(request.resource.data);
+      allow delete: if (isGlobalAdmin() || isFieldUser()) && lancamentoCanteiroPermitido(resource.data);
     }
 
     // Guias de Dispensa SPTF
@@ -187,7 +214,14 @@ service cloud.firestore {
     // Controle de Competências (ABERTO, FECHADO, REABERTO)
     match /competencias_controle/{doc} {
       allow read: if true;
-      allow write: if isGlobalAdmin();
+      allow create: if isGlobalAdmin();
+      allow delete: if isGlobalAdmin();
+      allow update: if isGlobalAdmin() || (
+        (isChefeDA() || isChefeCanteiro())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statusCanteiros'])
+        && request.resource.data.get('statusCanteiros', {}).diff(resource.data.get('statusCanteiros', {})).affectedKeys().hasOnly([adminData().get('canteiroSede', '')])
+        && request.resource.data.get('statusCanteiros', {}).get(adminData().get('canteiroSede', ''), {}).get('status', '') in ['ABERTO', 'FECHADO']
+      );
     }
 
     // Canteiros de obras (cadastro institucional)

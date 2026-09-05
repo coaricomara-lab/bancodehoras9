@@ -15,6 +15,74 @@
 
 export type StatusCompetencia = 'ABERTO' | 'FECHADO' | 'REABERTO';
 
+export type StatusCanteiro = 'ABERTO' | 'FECHADO';
+
+export interface ControleCanteiro {
+  status: StatusCanteiro;
+  data: string | null;
+  usuario: string | null;
+  motivo: string | null;
+}
+
+export type StatusCanteiros = Record<string, ControleCanteiro>;
+
+export interface ResultadoValidacaoCanteiro {
+  permitido: boolean;
+  bypass: boolean;
+  motivo: string;
+}
+
+export function normalizarCanteiroId(canteiroId?: string | null): string {
+  return String(canteiroId || '').trim().toUpperCase();
+}
+
+export function statusEfetivoCanteiro(
+  statusCanteiros: StatusCanteiros | undefined,
+  canteiroId: string,
+): StatusCanteiro {
+  const canteiro = normalizarCanteiroId(canteiroId);
+  return statusCanteiros?.[canteiro]?.status === 'FECHADO' ? 'FECHADO' : 'ABERTO';
+}
+
+export function validarLancamentoCanteiro(
+  statusCanteiros: StatusCanteiros | undefined,
+  canteiroId: string,
+  superAdmin = false,
+): ResultadoValidacaoCanteiro {
+  if (superAdmin) {
+    return { permitido: true, bypass: true, motivo: 'Bypass autorizado para SUPER_ADMIN.' };
+  }
+
+  if (statusEfetivoCanteiro(statusCanteiros, canteiroId) === 'FECHADO') {
+    return {
+      permitido: true,
+      bypass: false,
+      motivo: 'O mês anterior deste canteiro está fechado.',
+    };
+  }
+
+  return {
+    permitido: false,
+    bypass: false,
+    motivo: 'Feche o mês anterior deste canteiro antes de lançar horas.',
+  };
+}
+
+export function podeGerenciarCanteiro(
+  role: string | undefined,
+  usuarioCanteiroId: string | undefined,
+  alvoCanteiroId: string,
+): boolean {
+  const normalizedRole = String(role || '').toUpperCase();
+  if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'RH_ADMIN' || normalizedRole === 'GESTOR_RH') {
+    return true;
+  }
+  if (normalizedRole !== 'CHEFE_DA' && normalizedRole !== 'CHEFE_CANTEIRO') {
+    return false;
+  }
+  return normalizarCanteiroId(usuarioCanteiroId) === normalizarCanteiroId(alvoCanteiroId);
+}
+
 export const MONTH_NAMES_FULL = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'

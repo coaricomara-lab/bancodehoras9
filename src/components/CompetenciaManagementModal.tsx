@@ -25,9 +25,11 @@ import {
   MONTH_NAMES_FULL,
   getCompetenciaAnterior,
   minutosParaHorasDecimais,
-  podeHomologarCompetencia
+  podeHomologarCompetencia,
+  podeGerenciarCanteiro,
+  statusEfetivoCanteiro,
 } from '../services/competenciaEngine';
-import { Employee, TimeRecord } from '../types';
+import { AdminRole, ConstructionSite, Employee, TimeRecord } from '../types';
 import { Button, Badge } from './ui';
 import { ValidityAlertsPanel } from './ValidityAlertsPanel';
 import { LiquidacaoReportModal } from './LiquidacaoReportModal';
@@ -41,6 +43,9 @@ interface CompetenciaManagementModalProps {
   records: TimeRecord[];
   currentUserEmail: string;
   isGlobalAdmin: boolean;
+  userRole?: AdminRole;
+  currentUserCanteiro?: string;
+  constructionSites: ConstructionSite[];
   theme?: 'dark' | 'light';
   onCompetenciaUpdated: (comp: string) => void;
   onShowToast: (text: string, type?: 'success' | 'error' | 'info') => void;
@@ -55,13 +60,16 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
   records,
   currentUserEmail,
   isGlobalAdmin,
+  userRole,
+  currentUserCanteiro,
+  constructionSites,
   theme = 'dark',
   onCompetenciaUpdated,
   onShowToast,
 }) => {
   const isDark = theme === 'dark';
 
-  const [activeTab, setActiveTab] = useState<'fechamento' | 'historico'>('fechamento');
+  const [activeTab, setActiveTab] = useState<'fechamento' | 'fechamento-canteiro' | 'historico'>('fechamento');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState<{ percent: number; current: number; total: number } | null>(null);
   
@@ -163,6 +171,61 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
     }
   };
 
+  const canteirosDisponiveis = constructionSites.length > 0
+    ? constructionSites.map((site) => ({ id: site.codigo || site.id, nome: site.nome || site.name || site.codigo || site.id }))
+    : Array.from(new Set(employees.map((employee) => employee.sede).filter(Boolean))).map((id) => ({ id, nome: id }));
+
+  const handleFecharCanteiro = async (canteiroId: string) => {
+    if (!podeGerenciarCanteiro(userRole, currentUserCanteiro, canteiroId)) {
+      onShowToast('Você só pode gerenciar o fechamento do seu canteiro.', 'error');
+      return;
+    }
+    if (!window.confirm(`Confirma o fechamento do canteiro ${canteiroId} na competência ${competencia}?`)) return;
+    setIsProcessing(true);
+    try {
+      await competenciaService.fecharCanteiro({
+        competencia,
+        canteiroId,
+        operadorEmail: currentUserEmail,
+        operadorRole: userRole,
+      });
+      onShowToast(`Canteiro ${canteiroId} fechado com sucesso.`, 'success');
+      onCompetenciaUpdated(competencia);
+    } catch (err: any) {
+      onShowToast(err.message || 'Falha ao fechar canteiro.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReabrirCanteiro = async (canteiroId: string) => {
+    if (!podeGerenciarCanteiro(userRole, currentUserCanteiro, canteiroId)) {
+      onShowToast('Você só pode gerenciar o fechamento do seu canteiro.', 'error');
+      return;
+    }
+    const motivo = window.prompt(`Informe o motivo da reabertura do canteiro ${canteiroId} (mínimo 10 caracteres):`, '');
+    if (!motivo || motivo.trim().length < 10) {
+      onShowToast('A justificativa de reabertura deve conter ao menos 10 caracteres.', 'error');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await competenciaService.reabrirCanteiro({
+        competencia,
+        canteiroId,
+        operadorEmail: currentUserEmail,
+        operadorRole: userRole,
+        motivo,
+      });
+      onShowToast(`Canteiro ${canteiroId} reaberto com sucesso.`, 'success');
+      onCompetenciaUpdated(competencia);
+    } catch (err: any) {
+      onShowToast(err.message || 'Falha ao reabrir canteiro.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
       <div
@@ -252,6 +315,18 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
           >
             <Clock className="w-4 h-4" />
             <span>Histórico de Competências</span>
+          </button>
+          <button
+            id="tab-fechamento-canteiro"
+            onClick={() => setActiveTab('fechamento-canteiro')}
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center space-x-2 ${
+              activeTab === 'fechamento-canteiro'
+                ? 'border-blue-500 text-blue-500'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+            <span>Fechamento por Canteiro</span>
           </button>
         </div>
 
@@ -424,6 +499,43 @@ export const CompetenciaManagementModal: React.FC<CompetenciaManagementModalProp
                   Extrato de Liquidação / Rescisão (RH)
                 </Button>
               </div>
+            </div>
+          ) : activeTab === 'fechamento-canteiro' ? (
+            <div className="space-y-4">
+              <div className={`rounded-xl border p-4 text-xs ${isDark ? 'border-[#243756] bg-[#0B1426]/60 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                Cada canteiro possui fechamento independente. O mês seguinte só aceita lançamentos quando este canteiro estiver fechado.
+              </div>
+              {canteirosDisponiveis.length === 0 ? (
+                <div className="py-10 text-center text-sm text-slate-400">Nenhum canteiro cadastrado.</div>
+              ) : (
+                <div className="space-y-2">
+                  {canteirosDisponiveis.map((canteiro) => {
+                    const status = statusEfetivoCanteiro(controle?.statusCanteiros, canteiro.id);
+                    const podeGerenciar = podeGerenciarCanteiro(userRole, currentUserCanteiro, canteiro.id);
+                    return (
+                      <div key={canteiro.id} className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${isDark ? 'border-[#243756] bg-[#0B1426]/60' : 'border-slate-200 bg-white'}`}>
+                        <div>
+                          <div className="font-semibold text-sm">{canteiro.nome}</div>
+                          <div className="text-[11px] text-slate-400">Código: {canteiro.id}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={status === 'FECHADO' ? 'danger' : 'success'}>{status}</Badge>
+                          {podeGerenciar && status === 'FECHADO' && (
+                            <Button variant="secondary" size="sm" onClick={() => handleReabrirCanteiro(canteiro.id)} disabled={isProcessing}>
+                              <Unlock className="w-3.5 h-3.5 mr-1" /> Reabrir Canteiro
+                            </Button>
+                          )}
+                          {podeGerenciar && status !== 'FECHADO' && (
+                            <Button variant="primary" size="sm" onClick={() => handleFecharCanteiro(canteiro.id)} disabled={isProcessing}>
+                              <Lock className="w-3.5 h-3.5 mr-1" /> Fechar Canteiro
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : (
             /* Aba Histórico */
